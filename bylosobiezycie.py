@@ -1,15 +1,20 @@
-from random import choice, random, randrange
 import logging
+import sys
 from math import sqrt
+from random import choice, random, randrange
+
+import pygame as pg
+
 
 def distance(a, b):
-    if a>b:
+    if a > b:
         return a-b
     else:
         return b-a
 
+
 class Section(set):
-    size = 20
+    size = 100
 
     @classmethod
     def genmap(cls, size):
@@ -48,7 +53,11 @@ class Section(set):
         if isinstance(pos, str):
             pos = {'left': [-1, 0], 'right': [1, 0],
                    'up': [0, 1], 'down': [0, -1]}[pos]
-        return self.parent[self.id[0]+pos[0]][self.id[1]+pos[1]]
+        try:
+            sec = self.parent[self.id[0]+pos[0]][self.id[1]+pos[1]]
+        except IndexError:
+            sec = {}
+        return sec
 
     def not_in_range(self, x, y):
         _info = [0, 0]
@@ -76,7 +85,8 @@ class Life(object):
 
 
 class Plant(Life):
-    
+    nutrition = 5
+
     def __str__(self):
         return f'Plant [{self.x}, {self.y}]'
 
@@ -98,15 +108,22 @@ class Animal(Life):
         if dist > self.SIGHT_RADIUS:
             return 0
         else:
+            dist += 0.1**3
             return 1/dist
 
     def __str__(self):
         return f'Animal [{self.x}, {self.y}] speed={self.speed} energy={None}'
 
-    def move(self, direction): #TODO: To nie działa gdy jest zbyt bliżej niż self.speed xD
-        assert direction[0]==0 or direction[1]==0, 'Wrong directions'
-        self.x = abs(self.x + direction[0])
-        self.y = abs(self.y + direction[1])
+    def move(self, direction, map_end):
+        assert direction[0] + direction[1] <= self.speed, 'Wrong directions'
+        a = abs(self.x + direction[0])
+        b = abs(self.y + direction[1])
+        if a>=map_end:
+            a -= a-map_end+1
+        if b>=map_end:
+            b -= b-map_end+1
+        self.x = a
+        self.y = b
         shift = self.section.not_in_range(self.x, self.y)
         if shift:
             self.section.remove(self)
@@ -118,64 +135,84 @@ class Animal(Life):
         peaks = [[self.x-self.SIGHT_RADIUS, self.y-self.SIGHT_RADIUS], [self.x-self.SIGHT_RADIUS, self.y+self.SIGHT_RADIUS],
                  [self.x+self.SIGHT_RADIUS, self.y-self.SIGHT_RADIUS], [self.x+self.SIGHT_RADIUS, self.y+self.SIGHT_RADIUS]]
         for i in peaks:
-            if i[0]<0 or i[1]<0:
+            if i[0] < 0 or i[1] < 0:
                 continue
             shift = self.section.not_in_range(*i)
             if shift:
-                print("Szukanie:", self.section.next(*shift))
-                area.update(self.section.next(*shift))
+                new = self.section.next(*shift)
+                logging.debug("Szukanie: "+str(new))
+                area.update(new)
         possible = dict()
         for i in area:
-            if i.x == self.x and self.y == i.y:
+            if i == self:
                 continue
             val = self.see(i)
-            if val > 0: 
+            if val > 0:
                 if isinstance(i, Plant):
                     val /= self.energy/self.speed
-                if isinstance(i, Animal) and self.breeding_need>0:
+                if isinstance(i, Animal) and self.breeding_need > 0:
                     val *= self.breeding_need
-                if val>self.interest:
+                if val > self.interest:
                     possible[i] = val
-        if len(possible)>0:
+        if len(possible) > 0:
             return sorted(possible.items(), key=lambda t: t[1])[-1][0]
         else:
             return None
 
     def whereto(self, obj):
-        a = distance(self.x, obj.x) 
+        a = distance(self.x, obj.x)
         b = distance(self.y, obj.y)
-        if abs(a)>self.speed:
+        if abs(a) > self.speed:
             a = self.speed*a//abs(a)
-        if abs(b)>self.speed:
+        if abs(b) > self.speed:
             b = self.speed*b//abs(b)
-        if a>b:
-            return (a,0)
-        elif a==b:
-            return choice((a,0), (0,b))
-        else:
-            return (0,b)
+        while abs(a)+abs(b) > self.speed:
+            a = a // 2
+            b = b // 2
+        return a, b
+    
+    def random_walk(self):
+        a = randrange(-self.speed,self.speed+1)
+        b = randrange(-self.speed+abs(a),self.speed+1-abs(a))
+        return a, b
+
 
 if __name__ == "__main__":
-    s = Section.genmap(5)
-    d = Animal(15, 5, s, 2)
-    f = Plant(16, 5, s)
-    g = Plant(21, 5, s)
-    # for j in s:
-    #     for i in j:
-    #         print(i)
-    a = d.search()
-    print(a)
-    d.move(d.whereto(a))
-    print(d)
-    a = d.search()
-    print(a)
-    d.move(d.whereto(a))
-    print(d)
-    # d.move('right')
+    SECTION_AMOUNT = 16
+    PLANT_AMOUNT = 160
 
-    # print(1*'\n')
-    # print(d.search())
-    # d.move('up')
+    section_sqrt = int(sqrt(SECTION_AMOUNT))
 
-    # print(1*'\n')
-    # print(d.search())
+    pg.init()
+    screen = pg.display.set_mode(size=(
+        2*Section.size*section_sqrt, 2*Section.size*section_sqrt), flags=0, depth=0, display=0)
+    framerate = pg.time.Clock()
+
+    search_sectors = Section.genmap(section_sqrt)
+    animals = [Animal(399, 8, search_sectors, 2)]
+    plants = [Plant(randrange(0, Section.size*section_sqrt), 
+                    randrange(0, Section.size*section_sqrt), search_sectors) for i in range(PLANT_AMOUNT)]
+
+    while True:
+        for event in pg.event.get():
+            if event.type == pg.QUIT:
+                pg.quit()
+                logging.shutdown()
+                sys.exit(0)
+        screen.fill((0, 0, 0))
+
+        for d in animals:
+            target = d.search()
+            if target == None:
+                d.move(d.random_walk(), Section.size*section_sqrt)
+            elif target.x == d.x and target.y == d.y:
+                print('szamanie')
+            else:
+                d.move(d.whereto(target), Section.size*section_sqrt)
+            pg.draw.rect(screen, (255, 255, 255), (2*d.x, 2*d.y, 2, 2), 0)
+
+        for d in plants:
+            pg.draw.rect(screen, (0, 255, 0), (2*d.x, 2*d.y, 2, 2), 0)
+
+        pg.display.flip()
+    framerate.tick(60)
