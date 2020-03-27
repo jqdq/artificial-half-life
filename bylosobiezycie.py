@@ -2,6 +2,7 @@ import logging
 import sys
 from math import sqrt
 from random import choice, random, randrange
+from time import sleep
 
 import pygame as pg
 
@@ -14,7 +15,7 @@ def distance(a, b):
 
 
 class Section(set):
-    size = 100
+    size = 80
 
     @classmethod
     def genmap(cls, size):
@@ -178,8 +179,9 @@ class Animal(Life):
 
 
 if __name__ == "__main__":
-    SECTION_AMOUNT = 16
-    PLANT_AMOUNT = 160
+    SECTION_AMOUNT = 1
+    PLANT_AMOUNT = 5
+    ANIMAL_AMOUNT = 1
 
     section_sqrt = int(sqrt(SECTION_AMOUNT))
 
@@ -189,7 +191,7 @@ if __name__ == "__main__":
     framerate = pg.time.Clock()
 
     search_sectors = Section.genmap(section_sqrt)
-    animals = [Animal(399, 8, search_sectors, 2)]
+    animals = [Animal(randrange(0, Section.size*section_sqrt), randrange(0, Section.size*section_sqrt), search_sectors, 2) for i in range(ANIMAL_AMOUNT)]
     plants = [Plant(randrange(0, Section.size*section_sqrt), 
                     randrange(0, Section.size*section_sqrt), search_sectors) for i in range(PLANT_AMOUNT)]
 
