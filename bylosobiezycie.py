@@ -8,14 +8,12 @@ import pygame as pg
 
 
 def distance(a, b):
-    if a > b:
-        return a-b
-    else:
-        return b-a
+    return a-b
+
 
 
 class Section(set):
-    size = 80
+    size = 40
 
     @classmethod
     def genmap(cls, size):
@@ -28,12 +26,12 @@ class Section(set):
             s.append(g)
         return s
 
-    def __init__(self, species_list, _id, min_max_x, min_max_y, elements=[]):
+    def __init__(self, parent, _id, min_max_x, min_max_y, elements=[]):
         super().__init__(elements)
         assert len(_id) == 2, "Niepoprawne id"
         assert len(min_max_x) == 2, "Niepoprawne wartości min i max x"
         assert len(min_max_y) == 2, "Niepoprawne wartości min i max y"
-        self.species_list = species_list
+        self.parent = parent
         self.x = min_max_x
         self.y = min_max_y
         self.id = _id
@@ -55,7 +53,7 @@ class Section(set):
             pos = {'left': [-1, 0], 'right': [1, 0],
                    'up': [0, 1], 'down': [0, -1]}[pos]
         try:
-            sec = self.species_list[self.id[0]+pos[0]][self.id[1]+pos[1]]
+            sec = self.parent[self.id[0]+pos[0]][self.id[1]+pos[1]]
         except IndexError:
             sec = {}
         return sec
@@ -78,16 +76,16 @@ class Section(set):
 
 class Life(object):
 
-    def __init__(self, species_list, x, y, section_list):
+    def __init__(self, parent, x, y, section_list):
         self.x = x
         self.y = y
-        self.species_list = species_list
+        self.parent = parent
         self.section = section_list[x//Section.size][y//Section.size]
         self.section.add(self)
 
     def die(self):
         self.section.discard(self)
-        self.species_list.remove(self)
+        self.parent.remove(self)
 
 
 class Plant(Life):
@@ -100,18 +98,18 @@ class Plant(Life):
 class Animal(Life):
     SIGHT_RADIUS = 20
 
-    def __init__(self, species_list, x, y, section, speed):
-        super().__init__(species_list, x, y, section)
+    def __init__(self, parent, x, y, section, speed):
+        super().__init__(parent, x, y, section)
         self.speed = speed
         self.energy = 1
         self.breeding_need = -4
-        self.interest = 0.01
+        self.interest = 0.1**5
 
     def see(self, obj):
         x = distance(self.x, obj.x)
         y = distance(self.y, obj.y)
         dist = sqrt(x**2 + y**2)
-        if dist > self.SIGHT_RADIUS:
+        if self.SIGHT_RADIUS!=None and dist > self.SIGHT_RADIUS:
             return 0
         else:
             dist += self.interest*(0.1**2)
@@ -138,16 +136,21 @@ class Animal(Life):
 
     def search(self):
         area = self.section.copy()
-        peaks = [[self.x-self.SIGHT_RADIUS, self.y-self.SIGHT_RADIUS], [self.x-self.SIGHT_RADIUS, self.y+self.SIGHT_RADIUS],
-                 [self.x+self.SIGHT_RADIUS, self.y-self.SIGHT_RADIUS], [self.x+self.SIGHT_RADIUS, self.y+self.SIGHT_RADIUS]]
-        for i in peaks:
-            if i[0] < 0 or i[1] < 0:
-                continue
-            shift = self.section.not_in_range(*i)
-            if shift:
-                new = self.section.next(*shift)
-                logging.debug("Szukanie: "+str(new))
-                area.update(new)
+        if self.SIGHT_RADIUS==None or self.SIGHT_RADIUS>Section.size:
+            for i in self.section.parent:
+                for j in i:
+                    area.update(j)
+        else:
+            peaks = [[self.x-self.SIGHT_RADIUS, self.y-self.SIGHT_RADIUS], [self.x-self.SIGHT_RADIUS, self.y+self.SIGHT_RADIUS],
+                    [self.x+self.SIGHT_RADIUS, self.y-self.SIGHT_RADIUS], [self.x+self.SIGHT_RADIUS, self.y+self.SIGHT_RADIUS]]
+            for i in peaks:
+                if i[0] < 0 or i[1] < 0:
+                    continue
+                shift = self.section.not_in_range(*i)
+                if shift:
+                    new = self.section.next(*shift)
+                    logging.debug("Szukanie: "+str(new))
+                    area.update(new)
         possible = dict()
         for i in area:
             if i == self:
@@ -156,7 +159,7 @@ class Animal(Life):
             if val > 0:
                 if isinstance(i, Plant):
                     val /= self.energy
-                if isinstance(i, Animal) and self.breeding_need > 0:
+                elif isinstance(i, Animal):
                     val *= self.breeding_need
                 if val > self.interest:
                     possible[i] = val
@@ -166,8 +169,9 @@ class Animal(Life):
             return None
 
     def whereto(self, obj):
-        a = distance(self.x, obj.x)
-        b = distance(self.y, obj.y)
+        pg.draw.rect(screen, (255, 0, 0), (2*obj.x, 2*obj.y, 2, 2), 0)
+        a = distance(obj.x, self.x)
+        b = distance(obj.y, self.y)
         if abs(a) > self.speed:
             a = self.speed*a//abs(a)
         if abs(b) > self.speed:
@@ -184,14 +188,14 @@ class Animal(Life):
 
     def eat(self, obj):
         self.energy += obj.nutrition
-        print('szamanie')
+        logging.debug(f'Eating at [{obj.x}, {obj.y}]')
         obj.die()
 
 
 if __name__ == "__main__":
-    SECTION_AMOUNT = 1
-    PLANT_AMOUNT = 20
-    ANIMAL_AMOUNT = 1
+    SECTION_AMOUNT = 25
+    PLANT_AMOUNT = 600
+    ANIMAL_AMOUNT = 25
 
     section_sqrt = int(sqrt(SECTION_AMOUNT))
 
@@ -205,7 +209,7 @@ if __name__ == "__main__":
     animals = []
     for i in range(ANIMAL_AMOUNT):
         animals.append(Animal(animals, randrange(0, Section.size*section_sqrt),
-                              randrange(0, Section.size*section_sqrt), search_sectors, 2))
+                              randrange(0, Section.size*section_sqrt), search_sectors, 5))
         print(animals[-1])
 
     plants = []
@@ -221,6 +225,9 @@ if __name__ == "__main__":
                 sys.exit(0)
         screen.fill((0, 0, 0))
 
+        for d in plants:
+            pg.draw.rect(screen, (0, 255, 0), (2*d.x, 2*d.y, 2, 2), 0)
+
         for d in animals:
             target = d.search()
             if target == None:
@@ -232,8 +239,6 @@ if __name__ == "__main__":
                 d.move(d.whereto(target), Section.size*section_sqrt)
             pg.draw.rect(screen, (255, 255, 255), (2*d.x, 2*d.y, 2, 2), 0)
 
-        for d in plants:
-            pg.draw.rect(screen, (0, 255, 0), (2*d.x, 2*d.y, 2, 2), 0)
-
         pg.display.flip()
+        sleep(0.25)
     framerate.tick(60)
