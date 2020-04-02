@@ -10,8 +10,6 @@ import pygame as pg
 def distance(a, b):
     return a-b
 
-
-
 class Section(set):
     size = 40
 
@@ -96,7 +94,7 @@ class Plant(Life):
 
 
 class Animal(Life):
-    SIGHT_RADIUS = 20
+    SIGHT_RADIUS = None
 
     def __init__(self, parent, x, y, section, speed):
         super().__init__(parent, x, y, section)
@@ -104,6 +102,7 @@ class Animal(Life):
         self.energy = 1
         self.breeding_need = -4
         self.interest = 0.1**5
+        logging.info(f"Born {self}")
 
     def see(self, obj):
         x = distance(self.x, obj.x)
@@ -210,7 +209,6 @@ if __name__ == "__main__":
     for i in range(ANIMAL_AMOUNT):
         animals.append(Animal(animals, randrange(0, Section.size*section_sqrt),
                               randrange(0, Section.size*section_sqrt), search_sectors, 5))
-        print(animals[-1])
 
     plants = []
     for i in range(PLANT_AMOUNT):
