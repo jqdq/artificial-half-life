@@ -1,7 +1,31 @@
 
+from random import choice
+from config import GENE_LEN
+
 def distance(a, b):
     return a-b
 
+'''
+One Zero genes basic manipulation
+'''
+
+def read_oz(val):
+    assert set(val)=={'0','1'}, f'Niepoprawna notacja: {val}'
+    g = 0
+    for i in val:
+        if i=='1':
+            g += 1
+    return g
+
+def random_oz(length=GENE_LEN):
+    val = ''
+    for _ in range(length):
+        val += choice(['0','1'])
+    return val
+
+'''
+Map representation
+'''
 
 class Section(set):
     size = 40

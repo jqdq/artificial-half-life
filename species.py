@@ -1,8 +1,12 @@
-from technical import Section, distance
+import logging
 from math import sqrt
 from random import choice, random, randrange
-import logging
+
 import pygame.draw
+
+from config import CONSUMPTION
+from technical import Section, distance, read_oz, random_oz
+
 
 class Life(object):
 
@@ -28,16 +32,24 @@ class Life(object):
 
 
 class Plant(Life):
-    nutrition = 5
+    nutrition = 10
 
     def __str__(self):
         return f'Plant [{self.x}, {self.y}]'
 
 
 class Animal(Life):
-    SIGHT_RADIUS = None
+    sight_radius = None
+    attributes = ['speed', 'interest_threshold', 'interest_eating', 'interest_breeding', 'mutation_chance']
 
-    def __init__(self, parent, x, y, section, speed):
+    @classmethod
+    def gencode(cls):
+        genes = dict()
+        for i in cls.attributes:
+            genes[i] = random_oz()
+        return genes
+
+    def __init__(self, parent, x, y, section, **genome):
         """Tworzy zwierzę
         
         Arguments:
@@ -48,10 +60,14 @@ class Animal(Life):
             speed {int} -- szybkość poruszania się zwierzęcia
         """
         super().__init__(parent, x, y, section)
-        self.speed = speed
-        self.energy = 1
+        self.gender = choice([1, -1])
+        self.energy = 50
         self.breeding_need = -4
-        self.interest = 0.1**5
+        if genome==dict():
+            self.genome = self.gencode()
+        else:
+            self.genome = genome
+        self.interpret()
         logging.info(f"Born {self}")
 
     def see(self, obj):
@@ -59,7 +75,7 @@ class Animal(Life):
         x = distance(self.x, obj.x)
         y = distance(self.y, obj.y)
         dist = sqrt(x**2 + y**2)
-        if self.SIGHT_RADIUS != None and dist > self.SIGHT_RADIUS:
+        if self.sight_radius != None and dist > self.sight_radius:
             return 0
         elif dist == 0:
             return 2
@@ -69,7 +85,7 @@ class Animal(Life):
     def __str__(self):
         return f'Animal [{self.x}, {self.y}] speed={self.speed} energy={None}'
 
-    def move(self, direction, map_end):
+    def move(self, direction, map_end, consume=CONSUMPTION):
         """Porusza obiekt zgodnie z wektorem [x,y]
         
         Arguments:
@@ -90,17 +106,19 @@ class Animal(Life):
             self.section.remove(self)
             self.section = self.section.next(*shift)
             self.section.add(self)
+        if consume:
+            self.energy -= abs(direction[0])+abs(direction[1])
 
     def search(self):
         ''' Przeszukuje sekcje w polu wzrokowym zwracając najlepszy możliwy cel '''
         area = self.section.copy()
-        if self.SIGHT_RADIUS == None or self.SIGHT_RADIUS > Section.size:
+        if self.sight_radius == None or self.sight_radius > Section.size:
             for i in self.section.parent:
                 for j in i:
                     area.update(j)
         else:
-            peaks = [[self.x-self.SIGHT_RADIUS, self.y-self.SIGHT_RADIUS], [self.x-self.SIGHT_RADIUS, self.y+self.SIGHT_RADIUS],
-                     [self.x+self.SIGHT_RADIUS, self.y-self.SIGHT_RADIUS], [self.x+self.SIGHT_RADIUS, self.y+self.SIGHT_RADIUS]]
+            peaks = [[self.x-self.sight_radius, self.y-self.sight_radius], [self.x-self.sight_radius, self.y+self.sight_radius],
+                     [self.x+self.sight_radius, self.y-self.sight_radius], [self.x+self.sight_radius, self.y+self.sight_radius]]
             for i in peaks:
                 if i[0] < 0 or i[1] < 0:
                     continue
@@ -119,7 +137,7 @@ class Animal(Life):
                     val /= self.energy
                 elif isinstance(i, Animal):
                     val *= self.breeding_need
-                if val > self.interest:
+                if val > 0.1**self.interest_threshold:
                     possible[i] = val
         if len(possible) > 0:
             return sorted(possible.items(), key=lambda t: t[1])[-1][0]
@@ -161,3 +179,13 @@ class Animal(Life):
         self.energy += obj.nutrition
         logging.debug(f'Eating at [{obj.x}, {obj.y}]')
         obj.die()
+
+    def interpret(self):
+        for i in self.genome.items():
+            self.__setattr__(i[0],read_oz(i[1]))
+
+    def mutate(self):
+        chromosome = choice(self.attributes)
+        place = randrange(len(self.genome[chromosome]))
+        self.genome[chromosome][place] = {'0':'1','1':'0'}[self.genome[chromosome][place]]
+        logging.info(f'Mutacja u {self}. Chromosom {chromosome}: {self.genome[chromosome]}')

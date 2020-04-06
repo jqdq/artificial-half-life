@@ -1,24 +1,20 @@
 import logging
-from math import sqrt
 import sys
+from math import sqrt
 from random import choice, random, randrange
 from time import sleep
 
 import pygame as pg
+
+from config import ANIMAL_AMOUNT, PLANT_AMOUNT, SECTION_AMOUNT
+from species import Animal, Life, Plant
 from technical import Section, distance
-from species import Life, Plant, Animal
-
-''' CONFIG '''
-SECTION_AMOUNT = 25
-PLANT_AMOUNT = 600
-ANIMAL_AMOUNT = 25
-
 
 if __name__ == "__main__":
-    
-    # 24 Potem Bóg rzekł: «Niechaj ziemia wyda istoty żywe różnego rodzaju: bydło, 
-    # zwierzęta pełzające i dzikie zwierzęta według ich rodzajów!» I stało się tak. 
-    # 25 Bóg uczynił różne rodzaje dzikich zwierząt, bydła i wszelkich zwierząt 
+
+    # 24 Potem Bóg rzekł: «Niechaj ziemia wyda istoty żywe różnego rodzaju: bydło,
+    # zwierzęta pełzające i dzikie zwierzęta według ich rodzajów!» I stało się tak.
+    # 25 Bóg uczynił różne rodzaje dzikich zwierząt, bydła i wszelkich zwierząt
     # pełzających po ziemi. I widział Bóg, że były dobre.
 
     ''' SETUP '''
@@ -38,7 +34,7 @@ if __name__ == "__main__":
     animals = []
     for i in range(ANIMAL_AMOUNT):
         animals.append(Animal(animals, randrange(0, Section.size*section_sqrt),
-                              randrange(0, Section.size*section_sqrt), search_sectors, 5))
+                              randrange(0, Section.size*section_sqrt), search_sectors))
 
     plants = []
     for i in range(PLANT_AMOUNT):
@@ -63,7 +59,7 @@ if __name__ == "__main__":
 
         ### Obsługa gatunku wybranego ###
 
-        for d in animals:
+        for d in animals[:]:
             target = d.search()
             if target == None:
                 d.move(d.random_walk(), Section.size*section_sqrt)
@@ -72,7 +68,9 @@ if __name__ == "__main__":
                     d.eat(target)
             else:
                 d.move(d.whereto(target, screen), Section.size*section_sqrt)
+            if d.energy <= 0:
+                d.die()
             pg.draw.rect(screen, (255, 255, 255), (2*d.x, 2*d.y, 2, 2), 0)
 
         pg.display.flip()
-        framerate.tick(4) # Ustawia szybkość w fps
+        framerate.tick(4)  # Ustawia szybkość w fps
