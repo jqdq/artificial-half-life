@@ -5,12 +5,21 @@ from config import GENE_LEN
 def distance(a, b):
     return a-b
 
+def modify_string(val, pos, new_val):
+    new = ''
+    for i in range(len(val)):
+        if i==pos:
+            new += new_val
+        else:
+            new += val[i]
+    return new
+
 '''
 One Zero genes basic manipulation
 '''
 
 def read_oz(val):
-    assert set(val)=={'0','1'}, f'Niepoprawna notacja: {val}'
+    assert set(val).issubset({'0','1'}), f'Niepoprawna notacja: {val}'
     g = 0
     for i in val:
         if i=='1':
