@@ -238,7 +238,10 @@ class Animal(Life):
 
     def interpret(self):
         for i in self.genome.items():
-            self.__setattr__(i[0], read_oz(i[1]))
+            val = read_oz(i[1])
+            if i[0] in ['speed']:
+                val += 1
+            self.__setattr__(i[0], val)
 
     def mutate(self):
         chromosome = choice(self.attributes)

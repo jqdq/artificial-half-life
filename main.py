@@ -6,7 +6,7 @@ from time import sleep
 
 import pygame as pg
 
-from config import ANIMAL_AMOUNT, PLANT_AMOUNT, SECTION_AMOUNT, START_FOOD, START_BREEDING, REGEN_PER_TURN, LOSE_PER_TURN
+from config import DEATH, ANIMAL_AMOUNT, PLANT_AMOUNT, SECTION_AMOUNT, START_FOOD, START_BREEDING, REGEN_PER_TURN, LOSE_PER_TURN
 from species import Animal, Life, Plant
 from technical import Section, distance
 
@@ -42,6 +42,7 @@ if __name__ == "__main__":
                             randrange(0, Section.size*section_sqrt), search_sectors))
 
     ''' PRZEBIEG TURY '''
+    animal_counter = len(animals)
 
     while True:
         ### PyGame stuff ###
@@ -73,7 +74,7 @@ if __name__ == "__main__":
                     d.breed(target)
             else:
                 d.move(d.whereto(target, screen), Section.size*section_sqrt)
-            if d.energy <= 0:
+            if d.energy <= 0 and DEATH:
                 d.die()
             if random() < 0.1**(d.mutation_chance/2):
                 d.mutate()
@@ -84,6 +85,8 @@ if __name__ == "__main__":
             else:
                 pg.draw.rect(screen, (255, 255, 255), (2*d.x, 2*d.y, 2, 2), 0)
 
-        print('=====================', len(animals) , '=====================')
+        if len(animals) != animal_counter:
+            print('=====================', len(animals) , '=====================')
+            animal_counter = len(animals)
         pg.display.flip()
         framerate.tick(8)  # Ustawia szybkość w fps
