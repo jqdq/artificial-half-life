@@ -90,7 +90,7 @@ class Animal(Life):
 
     # Moving
 
-    def whereto(self, obj, screen):
+    def whereto(self, obj, screen=None):
         """Określa koordynaty do poruszania się w kierunku obiektu
         Also maluje na ekranie czerwoną kropkę na celu
 

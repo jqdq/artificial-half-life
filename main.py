@@ -6,6 +6,7 @@ from time import sleep
 
 import pygame as pg
 
+from config import ENABLE_PG, UPPER_LIMIT, TURN_LIMIT, ENABLE_OUTPUT
 from config import DEATH, ANIMAL_AMOUNT, PLANT_AMOUNT, SECTION_AMOUNT, START_FOOD, START_BREEDING, REGEN_PER_TURN, LOSE_PER_TURN
 from species import Animal, Life, Plant
 from technical import Section, distance
@@ -22,10 +23,13 @@ if __name__ == "__main__":
 
     section_sqrt = int(sqrt(SECTION_AMOUNT))
 
-    pg.init()
-    screen = pg.display.set_mode(size=(
-        2*Section.size*section_sqrt, 2*Section.size*section_sqrt), flags=0, depth=0, display=0)
-    framerate = pg.time.Clock()
+    if ENABLE_PG:
+        pg.init()
+        screen = pg.display.set_mode(size=(
+            2*Section.size*section_sqrt, 2*Section.size*section_sqrt), flags=0, depth=0, display=0)
+        framerate = pg.time.Clock()
+    else:
+        screen = None
 
     search_sectors = Section.genmap(section_sqrt)
 
@@ -42,24 +46,27 @@ if __name__ == "__main__":
                             randrange(0, Section.size*section_sqrt), search_sectors))
 
     ''' PRZEBIEG TURY '''
+    animal_story = []
     animal_counter = len(animals)
 
     while True:
         ### PyGame stuff ###
-        for event in pg.event.get():
-            if event.type == pg.QUIT:
-                pg.quit()
-                logging.shutdown()
-                sys.exit(0)
-        screen.fill((0, 0, 0))
+        if ENABLE_PG:
+            for event in pg.event.get():
+                if event.type == pg.QUIT:
+                    pg.quit()
+                    logging.shutdown()
+                    sys.exit(0)
+            screen.fill((0, 0, 0))
 
         ### Obsługa roślin ###
         for _ in range(REGEN_PER_TURN):
             plants.append(Plant(plants, randrange(0, Section.size*section_sqrt),
                                 randrange(0, Section.size*section_sqrt), search_sectors))
 
-        for d in plants:
-            pg.draw.rect(screen, (0, 255, 0), (2*d.x, 2*d.y, 2, 2), 0)
+        if ENABLE_PG:
+            for d in plants:
+                pg.draw.rect(screen, (0, 255, 0), (2*d.x, 2*d.y, 2, 2), 0)
 
         ### Obsługa gatunku wybranego ###
 
@@ -80,13 +87,26 @@ if __name__ == "__main__":
                 d.mutate()
             d.breeding_need += 1
             d.energy -= LOSE_PER_TURN
-            if d.breeding_need <= START_BREEDING+4:
-                pg.draw.rect(screen, (0, 0, 255), (2*d.x, 2*d.y, 2, 2), 0)
-            else:
-                pg.draw.rect(screen, (255, 255, 255), (2*d.x, 2*d.y, 2, 2), 0)
+            if ENABLE_PG:
+                if d.breeding_need <= START_BREEDING+4:
+                    pg.draw.rect(screen, (0, 0, 255), (2*d.x, 2*d.y, 2, 2), 0)
+                else:
+                    pg.draw.rect(screen, (255, 255, 255),
+                                 (2*d.x, 2*d.y, 2, 2), 0)
 
+        # Sprawdzanie i zapis ilości zwierząt
         if len(animals) != animal_counter:
-            print('=====================', len(animals) , '=====================')
+            if len(animals) == 0:
+                break
+            if (UPPER_LIMIT and len(animals) >= UPPER_LIMIT) or (TURN_LIMIT and len(animal_story) >= TURN_LIMIT):
+                break
+            print('=====================', len(animal_story), '::', len(
+                animals), '=====================')
             animal_counter = len(animals)
-        pg.display.flip()
-        framerate.tick(8)  # Ustawia szybkość w fps
+        animal_story.append(len(animals))
+
+        if ENABLE_PG:
+            pg.display.flip()
+            framerate.tick(8)  # Ustawia szybkość w fps
+
+    print('\n'*2, 'Simulation ended', '\a\a\a', '\n'*2)
