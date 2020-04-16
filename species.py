@@ -1,24 +1,31 @@
-from technical import Section, distance
-from math import sqrt
-from random import choice, random, randrange
 import logging
+from math import log, sqrt
+from random import choice, random, randrange
+
 import pygame.draw
+
+from config import CONSUMPTION, EATING_LOG, GENE_LEN, PLANT_NUTRITION, START_BREEDING, SIGHT
+from technical import Section, distance, modify_string, random_oz, read_oz
+
 
 class Life(object):
 
-    def __init__(self, parent, x, y, section_list):
+    def __init__(self, parent, x, y, region):
         """Tworzy obiekt żyjący
-        
+
         Arguments:
             parent {iterable} -- zbiór organizmów gatunku
             x {int} -- koordynaty
             y {int} -- koordynaty
-            section_list {[[Section,...],...]} -- "Mapa" używana do szukania celu przez zwierzęta
-        """        
+            region {[[Section,...],...] or Section} -- "Mapa" używana do szukania celu przez zwierzęta, albo bezpośrednio sekcja
+        """
         self.x = x
         self.y = y
         self.parent = parent
-        self.section = section_list[x//Section.size][y//Section.size]
+        if isinstance(region, Section):
+            self.section = region
+        else:
+            self.section = region[x//Section.size][y//Section.size]
         self.section.add(self)
 
     def die(self):
@@ -28,18 +35,33 @@ class Life(object):
 
 
 class Plant(Life):
-    nutrition = 5
+    nutrition = PLANT_NUTRITION
 
     def __str__(self):
         return f'Plant [{self.x}, {self.y}]'
 
 
 class Animal(Life):
-    SIGHT_RADIUS = None
+    sight_radius = SIGHT
+    attributes = ['speed', 'interest_threshold',
+                  'interest_eating', 'breeding_threshold', 'mutation_chance']
 
-    def __init__(self, parent, x, y, section, speed):
+    @classmethod
+    def gencode(cls):
+        genes = dict()
+        for i in cls.attributes:
+            genes[i] = random_oz()
+        return genes
+
+    def die(self):
+        super().die()
+        print(self, "died")
+
+    ### BUILT-IN ###
+
+    def __init__(self, parent, x, y, section, energy, **genome):
         """Tworzy zwierzę
-        
+
         Arguments:
             parent {iterable} -- zbiór organizmów gatunku
             x {int} -- koordynaty
@@ -48,41 +70,75 @@ class Animal(Life):
             speed {int} -- szybkość poruszania się zwierzęcia
         """
         super().__init__(parent, x, y, section)
-        self.speed = speed
-        self.energy = 1
-        self.breeding_need = -4
-        self.interest = 0.1**5
-        logging.info(f"Born {self}")
-
-    def see(self, obj):
-        ''' Zwraca ocenę odległości dla obiektu, 0 jeśli poza wzrokiem, 2 jeśli na tym samym polu'''
-        x = distance(self.x, obj.x)
-        y = distance(self.y, obj.y)
-        dist = sqrt(x**2 + y**2)
-        if self.SIGHT_RADIUS != None and dist > self.SIGHT_RADIUS:
-            return 0
-        elif dist == 0:
-            return 2
+        self.gender = choice([1, -1])
+        self.energy = energy
+        self.breeding_need = START_BREEDING
+        self.breeding_ready = False
+        if genome == dict():
+            self.genome = self.gencode()
         else:
-            return 1/dist
+            self.genome = genome
+        self.interpret()
 
     def __str__(self):
-        return f'Animal [{self.x}, {self.y}] speed={self.speed} energy={None}'
+        return f'Animal [{self.x}, {self.y}] speed={self.speed} energy={self.energy}'
 
-    def move(self, direction, map_end):
+    def __repr__(self):
+        return str(self)
+
+    ### OBJECT DETECTION AND MOVING ###
+
+    # Moving
+
+    def whereto(self, obj, screen=None):
+        """Określa koordynaty do poruszania się w kierunku obiektu
+        Also maluje na ekranie czerwoną kropkę na celu
+
+        Arguments:
+            obj {Life} -- obiekt docelowy
+            screen {pygame.Display or sth} -- ekran do malowania czerwonej kropy
+
+        Returns:
+            [int, int] -- wektor poruszania się
+        """
+        if screen:
+            pygame.draw.rect(screen, (255, 0, 0), (2*obj.x, 2*obj.y, 2, 2), 0)
+        a = distance(obj.x, self.x)
+        b = distance(obj.y, self.y)
+        if abs(a) > self.speed:
+            a = self.speed*a//abs(a)
+        if abs(b) > self.speed:
+            b = self.speed*b//abs(b)
+        while abs(a)+abs(b) > self.speed:
+            a = a // 2
+            b = b // 2
+            if abs(a)+abs(b)==2:
+                break
+        return a, b
+
+    def random_walk(self):
+        """ Generuje randomowy chód """
+        a = randrange(-self.speed, self.speed+1)
+        b = randrange(-self.speed+abs(a), self.speed+1-abs(a))
+        return a, b
+
+    def move(self, direction, map_end, consume=CONSUMPTION):
         """Porusza obiekt zgodnie z wektorem [x,y]
-        
+
         Arguments:
             direction {[int,int]} -- wspomniany wektor
             map_end {[int,int]} -- Pierwsze koordynaty x i y poza mapą
-        """        
+        """
         assert direction[0] + direction[1] <= self.speed, 'Wrong directions'
+        # Obliczanie końcowych koordynatów
         a = abs(self.x + direction[0])
         b = abs(self.y + direction[1])
+        # Handling końca mapy
         if a >= map_end:
             a -= a-map_end+1
         if b >= map_end:
             b -= b-map_end+1
+        # Przemieszczenie
         self.x = a
         self.y = b
         shift = self.section.not_in_range(self.x, self.y)
@@ -90,17 +146,38 @@ class Animal(Life):
             self.section.remove(self)
             self.section = self.section.next(*shift)
             self.section.add(self)
+        # Konsumpcja
+        if consume:
+            eaten = abs(direction[0])+abs(direction[1])
+            if EATING_LOG and eaten != 0:
+                self.energy -= round(eaten * log(eaten, EATING_LOG))
+            else:
+                self.energy -= eaten
+
+    # Object detection
+
+    def see(self, obj):
+        ''' Zwraca ocenę odległości dla obiektu, 0 jeśli poza wzrokiem, 2 jeśli na tym samym polu'''
+        x = distance(self.x, obj.x)
+        y = distance(self.y, obj.y)
+        dist = sqrt(x**2 + y**2)
+        if self.sight_radius != None and dist > self.sight_radius:
+            return 0
+        elif dist == 0:
+            return 2
+        else:
+            return 1/dist
 
     def search(self):
         ''' Przeszukuje sekcje w polu wzrokowym zwracając najlepszy możliwy cel '''
         area = self.section.copy()
-        if self.SIGHT_RADIUS == None or self.SIGHT_RADIUS > Section.size:
+        if self.sight_radius == None or self.sight_radius > Section.size:
             for i in self.section.parent:
                 for j in i:
                     area.update(j)
         else:
-            peaks = [[self.x-self.SIGHT_RADIUS, self.y-self.SIGHT_RADIUS], [self.x-self.SIGHT_RADIUS, self.y+self.SIGHT_RADIUS],
-                     [self.x+self.SIGHT_RADIUS, self.y-self.SIGHT_RADIUS], [self.x+self.SIGHT_RADIUS, self.y+self.SIGHT_RADIUS]]
+            peaks = [[self.x-self.sight_radius, self.y-self.sight_radius], [self.x-self.sight_radius, self.y+self.sight_radius],
+                     [self.x+self.sight_radius, self.y-self.sight_radius], [self.x+self.sight_radius, self.y+self.sight_radius]]
             for i in peaks:
                 if i[0] < 0 or i[1] < 0:
                     continue
@@ -113,51 +190,67 @@ class Animal(Life):
         for i in area:
             if i == self:
                 continue
-            val = self.see(i)
-            if val > 0:
+            if self.see(i) > 0:
+                val = self.see(i)
                 if isinstance(i, Plant):
-                    val /= self.energy
-                elif isinstance(i, Animal):
-                    val *= self.breeding_need
-                if val > self.interest:
+                    val /= (0.001+self.energy)/(1+self.interest_eating)
+                if isinstance(i, Animal):
+                    if i.gender == self.gender:
+                        continue
+                    else:
+                        val *= (self.breeding_need-self.breeding_threshold)*self.energy/(1+self.speed)
+                if val > 0.1**self.interest_threshold-GENE_LEN/2:
                     possible[i] = val
         if len(possible) > 0:
-            return sorted(possible.items(), key=lambda t: t[1])[-1][0]
+            return choice(sorted(possible.items(), key=lambda t: t[1])[(len(possible)//2):])[0]
         else:
             return None
 
-    def whereto(self, obj, screen):
-        """Określa koordynaty do poruszania się w kierunku obiektu
-        Also maluje na ekranie czerwoną kropkę na celu
-        
-        Arguments:
-            obj {Life} -- obiekt docelowy
-            screen {pygame.Display or sth} -- ekran do malowania czerwonej kropy
-        
-        Returns:
-            [int, int] -- wektor poruszania się
-        """        
-        if screen:
-            pygame.draw.rect(screen, (255, 0, 0), (2*obj.x, 2*obj.y, 2, 2), 0)
-        a = distance(obj.x, self.x)
-        b = distance(obj.y, self.y)
-        if abs(a) > self.speed:
-            a = self.speed*a//abs(a)
-        if abs(b) > self.speed:
-            b = self.speed*b//abs(b)
-        while abs(a)+abs(b) > self.speed:
-            a = a // 2
-            b = b // 2
-        return a, b
-
-    def random_walk(self):
-        """ Generuje randomowy chód """
-        a = randrange(-self.speed, self.speed+1)
-        b = randrange(-self.speed+abs(a), self.speed+1-abs(a))
-        return a, b
+    ### WORLD INTERACTIONS ###
 
     def eat(self, obj):
         """ metoda do jedzenia obj """
         self.energy += obj.nutrition
         logging.debug(f'Eating at [{obj.x}, {obj.y}]')
         obj.die()
+
+    def breed(self, partner):
+        # Testy, żeby przypału nie było
+        assert self.x == partner.x and self.y == partner.y, "Zła pozycja"
+        assert self.gender != partner.gender, "Ta sama płeć"
+        # Generowanie genomu i startowego najedzenia
+        genome = dict()
+        for i in self.attributes:
+            cut = randrange(GENE_LEN)
+            left = self.genome[i][:cut]
+            right = partner.genome[i][cut:]
+            genome[i] = left+right
+        start_en = self.energy/3 + partner.energy/3
+        # Narodziny
+        child = Animal(self.parent, self.x, self.y, self.section, int(start_en), **genome)
+        self.parent.append(child)
+        print(f"{child} narodzony z {partner} oraz {self}")
+        # Obniżanie libido i energi
+        self.energy = int(self.energy*2/3); partner.energy = int(partner.energy*2/3)
+        self.breeding_need = START_BREEDING; partner.breeding_need = START_BREEDING
+
+    ### GENETICS ###
+
+    def interpret(self):
+        for i in self.genome.items():
+            val = read_oz(i[1])
+            if i[0] in ['speed']:
+                val += 1
+            self.__setattr__(i[0], val)
+
+    def mutate(self):
+        chromosome = choice(self.attributes)
+        if random() < 0.5:
+            place = randrange(len(self.genome[chromosome]))
+            self.genome[chromosome] = modify_string(self.genome[chromosome], place, {
+                                                    '0': '1', '1': '0'}[self.genome[chromosome][place]])
+        else:
+            self.genome[chromosome] = self.genome[chromosome][::-1]
+        print(
+            f'Mutacja u {self}. Chromosom {chromosome}: {self.genome[chromosome]}')
+        self.interpret()
