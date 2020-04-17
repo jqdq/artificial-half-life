@@ -216,7 +216,9 @@ class Animal(Life):
                 if val > 0.1**self.interest_threshold-GENE_LEN/2:
                     possible[i] = val
         if len(possible) > 0:
-            return choice(sorted(possible.items(), key=lambda t: t[1])[(len(possible)//2):])[0]
+            d = sorted(possible.items(), key=lambda t: t[1])
+            chosen = choice(sorted(possible.items(), key=lambda t: t[1])[(len(possible)//4)*3:])[0]
+            return chosen
         else:
             return None
 

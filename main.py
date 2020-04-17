@@ -99,6 +99,16 @@ if __name__ == "__main__":
                     pg.draw.rect(screen, (255, 255, 255),
                                  (2*d.x, 2*d.y, 2, 2), 0)
 
+        ### Data extraction ###
+
+        if turn % (SAVE_INTERVAL+1) == 0:
+            if ENABLE_JSON:
+                save_json(JSON_FP, animals, turn)
+            if ENABLE_CSV == 'detail':
+                save_detail(CSV_FP, ATTRIBUTES_TO_SAVE, animals, turn)
+            elif ENABLE_CSV == 'summary':
+                save_summary(CSV_FP, animals, plants, turn)
+
         # Sprawdzanie i zapis ilości zwierząt
         if len(animals) != animal_counter:
             if len(animals) == 0:
@@ -110,14 +120,6 @@ if __name__ == "__main__":
             animal_counter = len(animals)
         if TURN_LIMIT and turn >= TURN_LIMIT:
             break
-
-        if turn % (SAVE_INTERVAL+1) == 0:
-            if ENABLE_JSON:
-                save_json(JSON_FP, animals, turn)
-            if ENABLE_CSV == 'detail':
-                save_detail(CSV_FP, ATTRIBUTES_TO_SAVE, animals, turn)
-            elif ENABLE_CSV == 'summary':
-                save_summary(CSV_FP, animals, plants, turn)
 
         if ENABLE_PG:
             pg.display.flip()

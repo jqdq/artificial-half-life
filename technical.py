@@ -3,7 +3,7 @@ from random import random
 import pandas as pd
 from json import dump
 from os import path
-from config import GENE_LEN
+from config import GENE_LEN, IS_NUMERICAL
 from os import path
 
 
@@ -178,8 +178,12 @@ def save_summary(fp, animal_list, plant_list, turn):
     df = pd.DataFrame(columns=attributes, dtype=int)
     for i in animal_list:
         df = df.append(i.get_data(attributes), ignore_index=True)
-    deviation = (df.quantile(0.75)-df.quantile(0.25))/2
-    med = df.quantile(0.5)
+    if IS_NUMERICAL:
+        deviation = df.std().round(decimals=3)
+        med = df.mean().round(decimals=3)
+    else:
+        deviation = (df.quantile(0.75)-df.quantile(0.25))/2
+        med = df.quantile(0.5)
 
     stats = [str(len(animal_list)), str(len(plant_list))]
     for i in attributes:
