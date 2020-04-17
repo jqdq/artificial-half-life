@@ -1,10 +1,20 @@
-''' GAME '''
-SECTION_AMOUNT = 6**2
+''' BASIC '''
+SECTION_AMOUNT = 8**2
 
-ENABLE_PG = True
 UPPER_LIMIT = 500
-TURN_LIMIT = 4000
-ENABLE_OUTPUT = False
+TURN_LIMIT = 10000
+
+ENABLE_PG = False
+ENABLE_CSV = 'summary'  # False, "detail" or "summary"
+CSV_FP = 'data/data2'
+ENABLE_JSON = False
+JSON_FP = 'data/record'
+SAVE_INTERVAL = 9
+ATTRIBUTES_TO_SAVE = ['energy', 'speed', 'interest_threshold',
+                      'interest_eating', 'breeding_threshold', 'mutation_chance']
+# Used only when in detail mode
+#['id', 'x', 'y', 'energy', 'speed', 'source', 'interest_threshold',
+# 'interest_eating', 'breeding_threshold', 'mutation_chance']
 
 ''' ANIMAL FEATURES '''
 ANIMAL_AMOUNT = 40
@@ -18,9 +28,14 @@ DEATH = True
 
 GENE_LEN = 10
 START_BREEDING = -4
+ANIMAL_ATTRIBS = {'speed':2,                   # Format - Attribute name : dominating value 
+                  'interest_threshold':5,
+                  'interest_eating':5, 
+                  'breeding_threshold':5, 
+                  'mutation_chance':2}
 
 ''' PLANTS '''
-PLANT_AMOUNT = 300
+PLANT_AMOUNT = 200
 REGEN_PER_TURN = 8
 
-PLANT_NUTRITION = 20
+PLANT_NUTRITION = 35

@@ -6,10 +6,13 @@ from time import sleep
 
 import pygame as pg
 
-from config import ENABLE_PG, UPPER_LIMIT, TURN_LIMIT, ENABLE_OUTPUT
-from config import DEATH, ANIMAL_AMOUNT, PLANT_AMOUNT, SECTION_AMOUNT, START_FOOD, START_BREEDING, REGEN_PER_TURN, LOSE_PER_TURN
+from config import (
+    ANIMAL_AMOUNT, ATTRIBUTES_TO_SAVE, CSV_FP, DEATH, ENABLE_CSV, ENABLE_JSON,
+    ENABLE_PG, JSON_FP, LOSE_PER_TURN, PLANT_AMOUNT, REGEN_PER_TURN,
+    SAVE_INTERVAL, SECTION_AMOUNT, START_BREEDING, START_FOOD, TURN_LIMIT,
+    UPPER_LIMIT)
 from species import Animal, Life, Plant
-from technical import Section, distance
+from technical import Section, distance, save_detail, save_json, save_summary
 
 if __name__ == "__main__":
 
@@ -38,18 +41,20 @@ if __name__ == "__main__":
     animals = []
     for i in range(ANIMAL_AMOUNT):
         animals.append(Animal(animals, randrange(0, Section.size*section_sqrt),
-                              randrange(0, Section.size*section_sqrt), search_sectors, START_FOOD))
+                              randrange(0, Section.size*section_sqrt), search_sectors, START_FOOD, None, None))
 
     plants = []
     for i in range(PLANT_AMOUNT):
-        plants.append(Plant(plants, randrange(0, Section.size*section_sqrt),
-                            randrange(0, Section.size*section_sqrt), search_sectors))
+        plants.append(Plant(plants, Section.size*section_sqrt,
+                            Section.size*section_sqrt, search_sectors))
 
     ''' PRZEBIEG TURY '''
-    animal_story = []
+    turn = 0
     animal_counter = len(animals)
 
     while True:
+        turn += 1
+
         ### PyGame stuff ###
         if ENABLE_PG:
             for event in pg.event.get():
@@ -61,8 +66,8 @@ if __name__ == "__main__":
 
         ### Obsługa roślin ###
         for _ in range(REGEN_PER_TURN):
-            plants.append(Plant(plants, randrange(0, Section.size*section_sqrt),
-                                randrange(0, Section.size*section_sqrt), search_sectors))
+            plants.append(Plant(plants, Section.size*section_sqrt,
+                                Section.size*section_sqrt, search_sectors))
 
         if ENABLE_PG:
             for d in plants:
@@ -83,7 +88,7 @@ if __name__ == "__main__":
                 d.move(d.whereto(target, screen), Section.size*section_sqrt)
             if d.energy <= 0 and DEATH:
                 d.die()
-            if random() < 0.1**(d.mutation_chance/2):
+            if random() < 0.1**(d.mutation_chance/2.5):
                 d.mutate()
             d.breeding_need += 1
             d.energy -= LOSE_PER_TURN
@@ -98,12 +103,21 @@ if __name__ == "__main__":
         if len(animals) != animal_counter:
             if len(animals) == 0:
                 break
-            if (UPPER_LIMIT and len(animals) >= UPPER_LIMIT) or (TURN_LIMIT and len(animal_story) >= TURN_LIMIT):
+            if UPPER_LIMIT and len(animals) >= UPPER_LIMIT:
                 break
-            print('=====================', len(animal_story), '::', len(
+            print('=====================', turn, '::', len(
                 animals), '=====================')
             animal_counter = len(animals)
-        animal_story.append(len(animals))
+        if TURN_LIMIT and turn >= TURN_LIMIT:
+            break
+
+        if turn % (SAVE_INTERVAL+1) == 0:
+            if ENABLE_JSON:
+                save_json(JSON_FP, animals, turn)
+            if ENABLE_CSV == 'detail':
+                save_detail(CSV_FP, ATTRIBUTES_TO_SAVE, animals, turn)
+            elif ENABLE_CSV == 'summary':
+                save_summary(CSV_FP, animals, plants, turn)
 
         if ENABLE_PG:
             pg.display.flip()

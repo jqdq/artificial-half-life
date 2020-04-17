@@ -4,7 +4,8 @@ from random import choice, random, randrange
 
 import pygame.draw
 
-from config import CONSUMPTION, EATING_LOG, GENE_LEN, PLANT_NUTRITION, START_BREEDING, SIGHT
+from config import (CONSUMPTION, EATING_LOG, GENE_LEN, PLANT_NUTRITION, SIGHT,
+                    START_BREEDING, ANIMAL_ATTRIBS)
 from technical import Section, distance, modify_string, random_oz, read_oz
 
 
@@ -37,51 +38,63 @@ class Life(object):
 class Plant(Life):
     nutrition = PLANT_NUTRITION
 
+    def __init__(self, parent, max_x, max_y, region):
+        while True:
+            x = randrange(0, max_x)
+            y = randrange(0, max_y)
+            section = region[x//Section.size][y//Section.size]
+            end_test = True
+            for i in section:
+                if i.x==x and i.y==y:
+                    end_test = False
+                    break
+            if end_test:
+                break
+        super().__init__(parent, x, y, section)
+                    
     def __str__(self):
         return f'Plant [{self.x}, {self.y}]'
 
 
 class Animal(Life):
     sight_radius = SIGHT
-    attributes = ['speed', 'interest_threshold',
-                  'interest_eating', 'breeding_threshold', 'mutation_chance']
+    attributes = list(ANIMAL_ATTRIBS.keys())
 
     @classmethod
     def gencode(cls):
         genes = dict()
         for i in cls.attributes:
-            genes[i] = random_oz()
+            genes[i] = random_oz(dom=ANIMAL_ATTRIBS[i])
         return genes
-
-    def die(self):
-        super().die()
-        print(self, "died")
 
     ### BUILT-IN ###
 
-    def __init__(self, parent, x, y, section, energy, **genome):
-        """Tworzy zwierzę
+    def __init__(self, parent, x, y, section, energy, genome_source, genome):
+        """[summary]
 
         Arguments:
-            parent {iterable} -- zbiór organizmów gatunku
-            x {int} -- koordynaty
-            y {int} -- koordynaty
-            section {[[Section,...],...]} -- "Mapa" używana do szukania celu przez zwierzęta
-            speed {int} -- szybkość poruszania się zwierzęcia
+            parent {[type]} -- [description]
+            x {[type]} -- [description]
+            y {[type]} -- [description]
+            section {[type]} -- [description]
+            energy {[type]} -- [description]
+            genome_source {[type]} -- [description]
         """
         super().__init__(parent, x, y, section)
+        self.source = genome_source
         self.gender = choice([1, -1])
         self.energy = energy
         self.breeding_need = START_BREEDING
         self.breeding_ready = False
-        if genome == dict():
+        self.id = hash(self)
+        if not genome:
             self.genome = self.gencode()
         else:
             self.genome = genome
         self.interpret()
 
     def __str__(self):
-        return f'Animal [{self.x}, {self.y}] speed={self.speed} energy={self.energy}'
+        return f'Animal [{self.id} | {self.x}, {self.y}] speed={self.speed} energy={self.energy}'
 
     def __repr__(self):
         return str(self)
@@ -112,7 +125,7 @@ class Animal(Life):
         while abs(a)+abs(b) > self.speed:
             a = a // 2
             b = b // 2
-            if abs(a)+abs(b)==2:
+            if abs(a)+abs(b) == 2:
                 break
         return a, b
 
@@ -198,7 +211,8 @@ class Animal(Life):
                     if i.gender == self.gender:
                         continue
                     else:
-                        val *= (self.breeding_need-self.breeding_threshold)*self.energy/(1+self.speed)
+                        val *= (self.breeding_need-self.breeding_threshold) * \
+                            self.energy/(1+self.speed)
                 if val > 0.1**self.interest_threshold-GENE_LEN/2:
                     possible[i] = val
         if len(possible) > 0:
@@ -227,12 +241,19 @@ class Animal(Life):
             genome[i] = left+right
         start_en = self.energy/3 + partner.energy/3
         # Narodziny
-        child = Animal(self.parent, self.x, self.y, self.section, int(start_en), **genome)
+        child = Animal(self.parent, self.x, self.y, self.section,
+                       int(start_en), [self.id, partner.id], genome)
         self.parent.append(child)
         print(f"{child} narodzony z {partner} oraz {self}")
         # Obniżanie libido i energi
-        self.energy = int(self.energy*2/3); partner.energy = int(partner.energy*2/3)
-        self.breeding_need = START_BREEDING; partner.breeding_need = START_BREEDING
+        self.energy = int(self.energy*2/3)
+        partner.energy = int(partner.energy*2/3)
+        self.breeding_need = START_BREEDING
+        partner.breeding_need = START_BREEDING
+
+    def die(self):
+        super().die()
+        print(self, "died")
 
     ### GENETICS ###
 
@@ -254,3 +275,15 @@ class Animal(Life):
         print(
             f'Mutacja u {self}. Chromosom {chromosome}: {self.genome[chromosome]}')
         self.interpret()
+
+    # DATA OUTPUT
+
+    def get_for_json(self):
+        interpreted = {i: self.__getattribute__(i) for i in self.attributes}
+        genome = self.genome
+        data = {'parents': self.source, 'position': [
+            self.x, self.y], 'interpreted': interpreted, 'genome': genome}
+        return self.id, data
+
+    def get_data(self, attrib):
+        return {i: self.__getattribute__(i) for i in attrib}
