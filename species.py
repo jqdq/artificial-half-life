@@ -4,7 +4,7 @@ from random import choice, random, randrange
 
 import pygame.draw
 
-from config import (CONSUMPTION, EATING_LOG, GENE_LEN, PLANT_NUTRITION, SIGHT,
+from config import (EATING_LOG, GENE_LEN, PLANT_NUTRITION, SIGHT,
                     START_BREEDING, ANIMAL_ATTRIBS)
 from technical import Section, distance, modify_string, random_oz, read_oz
 
@@ -134,7 +134,7 @@ class Animal(Life):
         b = randrange(-self.speed+abs(a), self.speed+1-abs(a))
         return a, b
 
-    def move(self, direction, map_end, consume=CONSUMPTION):
+    def move(self, direction, map_end):
         """Porusza obiekt zgodnie z wektorem [x,y]
 
         Arguments:
@@ -159,12 +159,11 @@ class Animal(Life):
             self.section = self.section.next(*shift)
             self.section.add(self)
         # Konsumpcja
-        if consume:
-            eaten = abs(direction[0])+abs(direction[1])
-            if EATING_LOG and eaten != 0:
-                self.energy -= round(eaten * log(eaten, EATING_LOG))
-            else:
-                self.energy -= eaten
+        eaten = abs(direction[0])+abs(direction[1])
+        if EATING_LOG and eaten != 0:
+            self.energy -= round(eaten * log(eaten, EATING_LOG))
+        else:
+            self.energy -= eaten
 
     # Object detection
 

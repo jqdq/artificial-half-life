@@ -24,7 +24,7 @@ if __name__ == "__main__":
     ''' SETUP '''
     ### Generowanie mapy ###
 
-    section_sqrt = int(sqrt(SECTION_AMOUNT))
+    section_sqrt = SECTION_AMOUNT
 
     if ENABLE_PG:
         pg.init()
