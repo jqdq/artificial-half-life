@@ -3,7 +3,7 @@ from random import random
 import pandas as pd
 from json import dump
 from os import path
-from config import GENE_LEN, IS_NUMERICAL
+from config import GENE_LEN, IS_NUMERICAL, ATTRIBUTES_TO_SAVE
 from os import path
 
 
@@ -153,14 +153,14 @@ DATA EXTRACTION
 '''
 
 
-def save_detail(fp, attributes, animal_list, turn):
+def save_detail(fp, animal_list, turn):
     if not path.exists(fp+'.csv'):
-        with open(fp, 'w', newline='\n') as csvfile:
-            csvfile.write("turn"+"\t"+"\t".join(attributes)+"\n")
+        with open(fp+'.csv', 'w', newline='\n') as csvfile:
+            csvfile.write("turn"+";"+";".join(ATTRIBUTES_TO_SAVE)+"\n")
     with open(fp+'.csv', 'a', newline='\n') as csvfile:
         for i in animal_list:
-            data = i.get_data(attributes).values()
-            csvfile.write(str(turn)+"\t"+"\t".join(data)+"\n")
+            data = [str(j) for j in i.get_data(ATTRIBUTES_TO_SAVE).values()]
+            csvfile.write(str(turn)+";"+";".join(data)+"\n")
 
 
 def save_summary(fp, animal_list, plant_list, turn):
@@ -201,4 +201,5 @@ def save_json(fp, animal_list, turn):
     for i in animal_list:
         g = i.get_for_json()
         data[g[0]] = g[1]
-    dump(data, f"{fp}_{turn}.json")
+    with open(f"{fp}_{turn}.json", 'w') as file:
+        dump(data, file)

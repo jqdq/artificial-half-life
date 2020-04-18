@@ -7,7 +7,7 @@ from time import sleep
 import pygame as pg
 
 from config import (
-    ANIMAL_AMOUNT, ATTRIBUTES_TO_SAVE, CSV_FP, DEATH, ENABLE_CSV, ENABLE_JSON,
+    ANIMAL_AMOUNT, CSV_FP, DEATH, ENABLE_CSV, ENABLE_JSON,
     ENABLE_PG, JSON_FP, LOSE_PER_TURN, PLANT_AMOUNT, REGEN_PER_TURN,
     SAVE_INTERVAL, SECTION_AMOUNT, START_BREEDING, START_FOOD, TURN_LIMIT,
     UPPER_LIMIT)
@@ -105,7 +105,7 @@ if __name__ == "__main__":
             if ENABLE_JSON:
                 save_json(JSON_FP, animals, turn)
             if ENABLE_CSV == 'detail':
-                save_detail(CSV_FP, ATTRIBUTES_TO_SAVE, animals, turn)
+                save_detail(CSV_FP, animals, turn)
             elif ENABLE_CSV == 'summary':
                 save_summary(CSV_FP, animals, plants, turn)
 

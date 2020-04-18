@@ -45,13 +45,13 @@ class Plant(Life):
             section = region[x//Section.size][y//Section.size]
             end_test = True
             for i in section:
-                if i.x==x and i.y==y:
+                if i.x == x and i.y == y:
                     end_test = False
                     break
             if end_test:
                 break
         super().__init__(parent, x, y, section)
-                    
+
     def __str__(self):
         return f'Plant [{self.x}, {self.y}]'
 
@@ -85,7 +85,6 @@ class Animal(Life):
         self.gender = choice([1, -1])
         self.energy = energy
         self.breeding_need = START_BREEDING
-        self.breeding_ready = False
         self.id = hash(self)
         if not genome:
             self.genome = self.gencode()
@@ -217,7 +216,8 @@ class Animal(Life):
                     possible[i] = val
         if len(possible) > 0:
             d = sorted(possible.items(), key=lambda t: t[1])
-            chosen = choice(sorted(possible.items(), key=lambda t: t[1])[(len(possible)//4)*3:])[0]
+            chosen = choice(sorted(possible.items(), key=lambda t: t[1])[
+                            (len(possible)//4)*3:])[0]
             return chosen
         else:
             return None
@@ -283,8 +283,9 @@ class Animal(Life):
     def get_for_json(self):
         interpreted = {i: self.__getattribute__(i) for i in self.attributes}
         genome = self.genome
-        data = {'parents': self.source, 'position': [
-            self.x, self.y], 'interpreted': interpreted, 'genome': genome}
+        data = {'parents': self.source, 'position': [self.x, self.y], 'gender': self.gender,
+                'breeding_need': self.breeding_need, 'energy': self.energy, 
+                'interpreted': interpreted, 'genome': genome}
         return self.id, data
 
     def get_data(self, attrib):

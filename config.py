@@ -5,17 +5,15 @@ UPPER_LIMIT = 600
 TURN_LIMIT = 10000
 
 ENABLE_PG = False
-ENABLE_CSV = 'summary'          # False, "detail" or "summary"
-IS_NUMERICAL = True            # if True calculates mean and std instead of the median and quarter deviation
-CSV_FP = 'data/data3'
+ENABLE_CSV = 'detail'         # False, "detail" or "summary"
+IS_NUMERICAL = True   # if True calculates mean and std instead of the median and quarter deviation
+CSV_FP = 'data/data2'
 ENABLE_JSON = False
-JSON_FP = 'data/record'
+JSON_FP = 'data/json/r'
 SAVE_INTERVAL = 9
-ATTRIBUTES_TO_SAVE = ['energy', 'speed', 'interest_threshold',
+ATTRIBUTES_TO_SAVE = ['id', 'x', 'y', 'gender', 'source', 'breeding_need', 'energy', 'speed', 'interest_threshold',
                       'interest_eating', 'breeding_threshold', 'mutation_chance']
 # Used only when in detail mode
-# ['id', 'x', 'y', 'energy', 'speed', 'source', 'interest_threshold',
-# 'interest_eating', 'breeding_threshold', 'mutation_chance']
 
 ''' ANIMAL FEATURES '''
 ANIMAL_AMOUNT = 36*3
