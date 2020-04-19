@@ -1,10 +1,13 @@
 
 from random import random
 import pandas as pd
-from json import dump
+from json import dump, load
 from os import path
-from config import GENE_LEN, IS_NUMERICAL, ATTRIBUTES_TO_SAVE
-from os import path
+from sys import exit
+import logging
+
+with open('default.json', 'r') as target:
+    config = load(target)
 
 
 def distance(a, b):
@@ -35,11 +38,11 @@ def read_oz(val):
     return g
 
 
-def random_oz(dom=GENE_LEN/2, length=GENE_LEN):
-    chance_threshold = dom/GENE_LEN
+def random_oz(dom=config['GENE_LEN']/2, length=config['GENE_LEN']):
+    chance_threshold = dom/config['GENE_LEN']
     val = ''
     for _ in range(length):
-        if random()<chance_threshold:
+        if random() < chance_threshold:
             val += '1'
         else:
             val += '0'
@@ -151,34 +154,46 @@ class Section(set):
 '''
 DATA EXTRACTION
 '''
+attr_dict = {"ID": 'id', "x coordinates": 'x', "y coordinates": 'y', "Gender": 'gender', "Parents": 'source', "Breeding need": 'breeding_need', "Energy": 'energy', "Speed gene": 'speed', "Attention threshold gene": 'interest_threshold',
+                    "Interest in eating gene": 'interest_eating', "Breeding threshold gene": 'breeding_threshold', "Mutation resistance": 'mutation_res'}
 
 
 def save_detail(fp, animal_list, turn):
-    if not path.exists(fp+'.csv'):
-        with open(fp+'.csv', 'w', newline='\n') as csvfile:
-            csvfile.write("turn"+";"+";".join(ATTRIBUTES_TO_SAVE)+"\n")
-    with open(fp+'.csv', 'a', newline='\n') as csvfile:
-        for i in animal_list:
-            data = [str(j) for j in i.get_data(ATTRIBUTES_TO_SAVE).values()]
-            csvfile.write(str(turn)+";"+";".join(data)+"\n")
+    try:
+        if not path.exists(fp+'.csv'):
+            with open(fp+'.csv', 'w', newline='\n') as csvfile:
+                csvfile.write(
+                    "turn"+";"+";".join(attr_dict[config['ATTRIBUTES_TO_SAVE']])+"\n")
+        with open(fp+'.csv', 'a', newline='\n') as csvfile:
+            for i in animal_list:
+                data = [str(j) for j in i.get_data(
+                    attr_dict[config['ATTRIBUTES_TO_SAVE']]).values()]
+                csvfile.write(str(turn)+";"+";".join(data)+"\n")
+    except FileNotFoundError:
+        logging.critical("SAVE LOCATION NOT FOUND")
+        exit(1)
 
 
 def save_summary(fp, animal_list, plant_list, turn):
     attributes = ['energy', 'speed', 'interest_threshold',
-                  'interest_eating', 'breeding_threshold', 'mutation_chance']
-    if not path.exists(fp+'.csv'):
-        attr_names = ['turn', 'animal_amount', 'plant_amount']
-        for i in attributes:
-            attr_names.append(i+'_med')
-            attr_names.append(i+'_dev')
-        with open(fp+'.csv', 'w', newline='\n') as csvfile:
-            csvfile.write(";".join(attr_names)+"\n")
+                  'interest_eating', 'breeding_threshold', 'mutation_res']
+    try:
+        if not path.exists(fp+'.csv'):
+            attr_names = ['turn', 'animal_amount', 'plant_amount']
+            for i in attributes:
+                attr_names.append(i+'_med')
+                attr_names.append(i+'_dev')
+            with open(fp+'.csv', 'w', newline='\n') as csvfile:
+                csvfile.write(";".join(attr_names)+"\n")
+    except FileNotFoundError:
+        logging.critical("SAVE LOCATION NOT FOUND")
+        exit(1)
 
     # Calculating statistics
     df = pd.DataFrame(columns=attributes, dtype=int)
     for i in animal_list:
         df = df.append(i.get_data(attributes), ignore_index=True)
-    if IS_NUMERICAL:
+    if config['IS_NUMERICAL']:
         deviation = df.std().round(decimals=3)
         med = df.mean().round(decimals=3)
     else:
@@ -191,9 +206,13 @@ def save_summary(fp, animal_list, plant_list, turn):
         stats.append(str(deviation[i]))
 
     # Writing
-    with open(fp+'.csv', 'a', newline='\n') as csvfile:
-        text = str(turn)+";"+";".join(stats)+"\n"
-        csvfile.write(text)
+    try:
+        with open(fp+'.csv', 'a', newline='\n') as csvfile:
+            text = str(turn)+";"+";".join(stats)+"\n"
+            csvfile.write(text)
+    except FileNotFoundError:
+        logging.critical("SAVE LOCATION NOT FOUND")
+        exit(1)
 
 
 def save_json(fp, animal_list, turn):
@@ -201,5 +220,9 @@ def save_json(fp, animal_list, turn):
     for i in animal_list:
         g = i.get_for_json()
         data[g[0]] = g[1]
-    with open(f"{fp}_{turn}.json", 'w') as file:
-        dump(data, file)
+    try:
+        with open(f"{fp}_{turn}.json", 'w') as file:
+            dump(data, file)
+    except FileNotFoundError:
+        logging.critical("SAVE LOCATION NOT FOUND")
+        exit(1)

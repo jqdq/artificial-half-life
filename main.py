@@ -6,13 +6,9 @@ from time import sleep
 
 import pygame as pg
 
-from config import (
-    ANIMAL_AMOUNT, CSV_FP, DEATH, ENABLE_CSV, ENABLE_JSON,
-    ENABLE_PG, JSON_FP, LOSE_PER_TURN, PLANT_AMOUNT, REGEN_PER_TURN,
-    SAVE_INTERVAL, SECTION_AMOUNT, START_BREEDING, START_FOOD, TURN_LIMIT,
-    UPPER_LIMIT)
-from species import Animal, Life, Plant
-from technical import Section, distance, save_detail, save_json, save_summary
+from config_GUI import configure
+from species import Animal, Life, Plant, config
+from technical import Section, distance, save_detail, save_json, save_summary, config
 
 if __name__ == "__main__":
 
@@ -21,12 +17,16 @@ if __name__ == "__main__":
     # 25 Bóg uczynił różne rodzaje dzikich zwierząt, bydła i wszelkich zwierząt
     # pełzających po ziemi. I widział Bóg, że były dobre.
 
+    config = configure()
+    if config==None:
+        sys.exit(0)
+
     ''' SETUP '''
     ### Generowanie mapy ###
 
-    section_sqrt = SECTION_AMOUNT
+    section_sqrt = config['SECTION_AMOUNT']
 
-    if ENABLE_PG:
+    if config['ENABLE_PG']:
         pg.init()
         screen = pg.display.set_mode(size=(
             2*Section.size*section_sqrt, 2*Section.size*section_sqrt), flags=0, depth=0, display=0)
@@ -39,12 +39,12 @@ if __name__ == "__main__":
     ### Produkcja startowej biosfery ###
 
     animals = []
-    for i in range(ANIMAL_AMOUNT):
+    for i in range(config['ANIMAL_AMOUNT']):
         animals.append(Animal(animals, randrange(0, Section.size*section_sqrt),
-                              randrange(0, Section.size*section_sqrt), search_sectors, START_FOOD, None, None))
+                              randrange(0, Section.size*section_sqrt), search_sectors, config['START_FOOD'], None, None))
 
     plants = []
-    for i in range(PLANT_AMOUNT):
+    for i in range(config['PLANT_AMOUNT']):
         plants.append(Plant(plants, Section.size*section_sqrt,
                             Section.size*section_sqrt, search_sectors))
 
@@ -56,7 +56,7 @@ if __name__ == "__main__":
         turn += 1
 
         ### PyGame stuff ###
-        if ENABLE_PG:
+        if config['ENABLE_PG']:
             for event in pg.event.get():
                 if event.type == pg.QUIT:
                     pg.quit()
@@ -65,11 +65,11 @@ if __name__ == "__main__":
             screen.fill((0, 0, 0))
 
         ### Obsługa roślin ###
-        for _ in range(REGEN_PER_TURN):
+        for _ in range(config['REGEN_PER_TURN']):
             plants.append(Plant(plants, Section.size*section_sqrt,
                                 Section.size*section_sqrt, search_sectors))
 
-        if ENABLE_PG:
+        if config['ENABLE_PG']:
             for d in plants:
                 pg.draw.rect(screen, (0, 255, 0), (2*d.x, 2*d.y, 2, 2), 0)
 
@@ -86,14 +86,14 @@ if __name__ == "__main__":
                     d.breed(target)
             else:
                 d.move(d.whereto(target, screen), Section.size*section_sqrt)
-            if d.energy <= 0 and DEATH:
+            if d.energy <= 0 and config['DEATH']:
                 d.die()
-            if random() < 0.1**(d.mutation_chance/2.5):
+            if random() < 0.1**(d.mutation_res/2.5):
                 d.mutate()
             d.breeding_need += 1
-            d.energy -= LOSE_PER_TURN
-            if ENABLE_PG:
-                if d.breeding_need <= START_BREEDING+4:
+            d.energy -= config['LOSE_PER_TURN']
+            if config['ENABLE_PG']:
+                if d.breeding_need <= config['START_BREEDING']+4:
                     pg.draw.rect(screen, (0, 0, 255), (2*d.x, 2*d.y, 2, 2), 0)
                 else:
                     pg.draw.rect(screen, (255, 255, 255),
@@ -101,27 +101,27 @@ if __name__ == "__main__":
 
         ### Data extraction ###
 
-        if turn % (SAVE_INTERVAL+1) == 0:
-            if ENABLE_JSON:
-                save_json(JSON_FP, animals, turn)
-            if ENABLE_CSV == 'detail':
-                save_detail(CSV_FP, animals, turn)
-            elif ENABLE_CSV == 'summary':
-                save_summary(CSV_FP, animals, plants, turn)
+        if turn % (config['SAVE_INTERVAL']+1) == 0:
+            if config['ENABLE_JSON']:
+                save_json(config['JSON_FP'], animals, turn)
+            if config['ENABLE_CSV'] == 2:
+                save_detail(config['CSV_FP'], animals, turn)
+            elif config['ENABLE_CSV'] == 1:
+                save_summary(config['CSV_FP'], animals, plants, turn)
 
         # Sprawdzanie i zapis ilości zwierząt
         if len(animals) != animal_counter:
             if len(animals) == 0:
                 break
-            if UPPER_LIMIT and len(animals) >= UPPER_LIMIT:
+            if config['ANIMAL_LIMIT'] and len(animals) >= config['ANIMAL_LIMIT']:
                 break
             print('=====================', turn, '::', len(
                 animals), '=====================')
             animal_counter = len(animals)
-        if TURN_LIMIT and turn >= TURN_LIMIT:
+        if config['TURN_LIMIT'] and turn >= config['TURN_LIMIT']:
             break
 
-        if ENABLE_PG:
+        if config['ENABLE_PG']:
             pg.display.flip()
             framerate.tick(8)  # Ustawia szybkość w fps
 

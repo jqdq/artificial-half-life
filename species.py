@@ -1,13 +1,14 @@
 import logging
 from math import log, sqrt
 from random import choice, random, randrange
+import json
 
 import pygame.draw
 
-from config import (EATING_LOG, GENE_LEN, PLANT_NUTRITION, SIGHT,
-                    START_BREEDING, ANIMAL_ATTRIBS)
 from technical import Section, distance, modify_string, random_oz, read_oz
 
+with open('default.json', 'r') as target:
+    config = json.load(target)
 
 class Life(object):
 
@@ -36,7 +37,7 @@ class Life(object):
 
 
 class Plant(Life):
-    nutrition = PLANT_NUTRITION
+    nutrition = config['PLANT_NUTRITION']
 
     def __init__(self, parent, max_x, max_y, region):
         while True:
@@ -57,14 +58,14 @@ class Plant(Life):
 
 
 class Animal(Life):
-    sight_radius = SIGHT
-    attributes = list(ANIMAL_ATTRIBS.keys())
+    sight_radius = config['SIGHT']
+    attributes = list(config['ANIMAL_ATTRIBS'].keys())
 
     @classmethod
     def gencode(cls):
         genes = dict()
         for i in cls.attributes:
-            genes[i] = random_oz(dom=ANIMAL_ATTRIBS[i])
+            genes[i] = random_oz(dom=config['ANIMAL_ATTRIBS'][i])
         return genes
 
     ### BUILT-IN ###
@@ -84,7 +85,7 @@ class Animal(Life):
         self.source = genome_source
         self.gender = choice([1, -1])
         self.energy = energy
-        self.breeding_need = START_BREEDING
+        self.breeding_need = config['START_BREEDING']
         self.id = hash(self)
         if not genome:
             self.genome = self.gencode()
@@ -98,7 +99,7 @@ class Animal(Life):
     def __repr__(self):
         return str(self)
 
-    ### OBJECT DETECTION AND MOVING ###
+    ### OBJECT DETECTION AND MOVEMENT ###
 
     # Moving
 
@@ -160,8 +161,8 @@ class Animal(Life):
             self.section.add(self)
         # Konsumpcja
         eaten = abs(direction[0])+abs(direction[1])
-        if EATING_LOG and eaten != 0:
-            self.energy -= round(eaten * log(eaten, EATING_LOG))
+        if config['EATING_LOG'] and eaten != 0:
+            self.energy -= round(eaten * log(eaten, config['EATING_LOG']))
         else:
             self.energy -= eaten
 
@@ -211,7 +212,7 @@ class Animal(Life):
                     else:
                         val *= (self.breeding_need-self.breeding_threshold) * \
                             self.energy/(1+self.speed)
-                if val > 0.1**self.interest_threshold-GENE_LEN/2:
+                if val > 0.1**self.interest_threshold-config['GENE_LEN']/2:
                     possible[i] = val
         if len(possible) > 0:
             d = sorted(possible.items(), key=lambda t: t[1])
@@ -236,7 +237,7 @@ class Animal(Life):
         # Generowanie genomu i startowego najedzenia
         genome = dict()
         for i in self.attributes:
-            cut = randrange(GENE_LEN)
+            cut = randrange(config['GENE_LEN'])
             left = self.genome[i][:cut]
             right = partner.genome[i][cut:]
             genome[i] = left+right
@@ -249,8 +250,8 @@ class Animal(Life):
         # Obniżanie libido i energi
         self.energy = int(self.energy*2/3)
         partner.energy = int(partner.energy*2/3)
-        self.breeding_need = START_BREEDING
-        partner.breeding_need = START_BREEDING
+        self.breeding_need = config['START_BREEDING']
+        partner.breeding_need = config['START_BREEDING']
 
     def die(self):
         super().die()
