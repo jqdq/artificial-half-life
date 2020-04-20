@@ -13,13 +13,13 @@ with open('config.json', 'r') as target:
 class Life(object):
 
     def __init__(self, parent, x, y, region):
-        """Tworzy obiekt żyjący
+        """Creates a living object
 
         Arguments:
-            parent {iterable} -- zbiór organizmów gatunku
-            x {int} -- koordynaty
-            y {int} -- koordynaty
-            region {[[Section,...],...] or Section} -- "Mapa" używana do szukania celu przez zwierzęta, albo bezpośrednio sekcja
+            parent {iterable} -- list of all living objects of this type
+            x {int} -- spawn coordinate
+            y {int} -- spawn coordinate
+            region {[[Section,...],...] or Section} -- List of all Section objects or the chosen object
         """
         self.x = x
         self.y = y
@@ -31,7 +31,7 @@ class Life(object):
         self.section.add(self)
 
     def die(self):
-        ''' Zabija organizm usuwając wszystkie jego wzmianki'''
+        '''Kills the organism'''
         self.section.discard(self)
         self.parent.remove(self)
 
@@ -40,9 +40,17 @@ class Plant(Life):
     nutrition = config['PLANT_NUTRITION']
 
     def __init__(self, parent, max_x, max_y, region):
+        """A plant fot animals to eat
+        
+        Arguments:
+            parent {[Plant objects]} -- List containing all of the plant objects
+            max_x {int} -- Highest possible x
+            max_y {int} -- Highest possible y
+            region {[[Section, ...], ...]} -- List of all Section objects
+        """        
         while True:
-            x = randrange(0, max_x)
-            y = randrange(0, max_y)
+            x = randrange(0, max_x+1)
+            y = randrange(0, max_y+1)
             section = region[x//Section.size][y//Section.size]
             end_test = True
             for i in section:
@@ -71,16 +79,17 @@ class Animal(Life):
     ### BUILT-IN ###
 
     def __init__(self, parent, x, y, section, energy, genome_source, genome):
-        """[summary]
-
+        """Main object in the symulation - eats, breeds and mutates
+        
         Arguments:
-            parent {[type]} -- [description]
-            x {[type]} -- [description]
-            y {[type]} -- [description]
-            section {[type]} -- [description]
-            energy {[type]} -- [description]
-            genome_source {[type]} -- [description]
-        """
+            parent {Animal list} -- List containing all of the Animal objects
+            x {int} -- spawn coordinates
+            y {int} -- spawn coordinates
+            section {[[Section,...],...] or Section} -- List of all Section objects or the chosen object
+            energy {int} -- starting energy of the animal
+            genome_source {[Animal, Animal] or None} -- Parent list
+            genome {{attributes:strings consisting of 1 and 0} or None} -- used to calculate corresponding attributes
+        """        
         super().__init__(parent, x, y, section)
         self.source = genome_source
         self.gender = choice([1, -1])
@@ -104,15 +113,16 @@ class Animal(Life):
     # Moving
 
     def whereto(self, obj, screen=None, camera=None):
-        """Określa koordynaty do poruszania się w kierunku obiektu
-        Also maluje na ekranie czerwoną kropkę na celu
+        """Generates movement vector for the animal
+        Creates a red dot on screen if screen and camera are provided
 
         Arguments:
-            obj {Life} -- obiekt docelowy
-            screen {pygame.Display or sth} -- ekran do malowania czerwonej kropy
+            obj {Life} -- movement's target
+            screen {pygame.Display} -- screen on which red dot will be drawn
+            camera {dict} -- defined in main.py
 
         Returns:
-            [int, int] -- wektor poruszania się
+            [int, int] -- the vector
         """
         if screen and camera:
             pygame.draw.rect(screen, (255, 0, 0), (modify4cam(obj.x, camera, screen, 'x'), modify4cam(
@@ -131,17 +141,17 @@ class Animal(Life):
         return a, b
 
     def random_walk(self):
-        """ Generuje randomowy chód """
+        """ Generates a random movement """
         a = randrange(-self.speed, self.speed+1)
         b = randrange(-self.speed+abs(a), self.speed+1-abs(a))
         return a, b
 
     def move(self, direction, map_end):
-        """Porusza obiekt zgodnie z wektorem [x,y]
+        """Moves the animal according to the provided direction, handles Section change and energy loss
 
         Arguments:
-            direction {[int,int]} -- wspomniany wektor
-            map_end {[int,int]} -- Pierwsze koordynaty x i y poza mapą
+            direction {[int,int]} -- the movement vector
+            map_end {[int,int]} -- first coordinates outside of both bounds
         """
         assert direction[0] + direction[1] <= self.speed, 'Wrong directions'
         # Obliczanie końcowych koordynatów
@@ -162,15 +172,17 @@ class Animal(Life):
             self.section.add(self)
         # Konsumpcja
         eaten = abs(direction[0])+abs(direction[1])
-        if config['EATING_LOG'] and eaten != 0:
+        if not config['EATING_LOG'] in [0,1]:
             self.energy -= round(eaten * log(eaten, config['EATING_LOG']))
+        elif config['EATING_LOG']==0:
+            pass
         else:
             self.energy -= eaten
 
     # Object detection
 
     def see(self, obj):
-        ''' Zwraca ocenę odległości dla obiektu, 0 jeśli poza wzrokiem, 2 jeśli na tym samym polu'''
+        '''Calculates object weight'''
         x = distance(self.x, obj.x)
         y = distance(self.y, obj.y)
         dist = sqrt(x**2 + y**2)
@@ -182,7 +194,7 @@ class Animal(Life):
             return 1/dist
 
     def search(self):
-        ''' Przeszukuje sekcje w polu wzrokowym zwracając najlepszy możliwy cel '''
+        '''Handles target search, returns the best target or None'''
         area = self.section.copy()
         if self.sight_radius == None or self.sight_radius > Section.size:
             for i in self.section.parent:
@@ -224,15 +236,16 @@ class Animal(Life):
     ### WORLD INTERACTIONS ###
 
     def eat(self, obj):
-        """ metoda do jedzenia obj """
+        """ Used to eat other objects """
         self.energy += obj.nutrition
         obj.die()
 
     def breed(self, partner):
-        # Testy, żeby przypału nie było
-        assert self.x == partner.x and self.y == partner.y, "Zła pozycja"
-        assert self.gender != partner.gender, "Ta sama płeć"
-        # Generowanie genomu i startowego najedzenia
+        '''Creates a pretty little Animal from self and partner'''
+        # Assertions
+        assert self.x == partner.x and self.y == partner.y, "Wrong position"
+        assert self.gender != partner.gender, "Same gender"
+        # Genome and starting energy calculation
         genome = dict()
         for i in self.attributes:
             cut = randrange(config['GENE_LEN'])
@@ -240,12 +253,12 @@ class Animal(Life):
             right = partner.genome[i][cut:]
             genome[i] = left+right
         start_en = self.energy/3 + partner.energy/3
-        # Narodziny
+        # Birth
         child = Animal(self.parent, self.x, self.y, self.section,
                        int(start_en), [self.id, partner.id], genome)
         self.parent.append(child)
         print(f"Breeding: {self} and {partner} -> {child}")
-        # Obniżanie libido i energi
+        # Libido and energy reduction
         self.energy = int(self.energy*2/3)
         partner.energy = int(partner.energy*2/3)
         self.breeding_need = config['START_BREEDING']
@@ -257,14 +270,22 @@ class Animal(Life):
 
     ### GENETICS ###
 
-    def interpret(self):
-        for i in self.genome.items():
-            val = read_oz(i[1])
-            if i[0] in ['speed']:
+    def interpret(self, chromosome=None):
+        '''Interprets the raw genome'''
+        if chromosome:
+            val = read_oz(chromosome)
+            if chromosome == 'speed':
                 val += 1
-            self.__setattr__(i[0], val)
+            self.__setattr__(chromosome, val)
+        else:
+            for i in self.genome.items():
+                val = read_oz(i[1])
+                if i[0] == 'speed':
+                    val += 1
+                self.__setattr__(i[0], val)
 
     def mutate(self):
+        '''Creates a mutation in the animal and re-interprets its genome'''
         chromosome = choice(self.attributes)
         old = self.genome[chromosome]
         if random() < 0.5:
@@ -274,11 +295,12 @@ class Animal(Life):
         else:
             self.genome[chromosome] = self.genome[chromosome][::-1]
         print(f'Mutation: {self}; {chromosome}: {old} -> {self.genome[chromosome]}')
-        self.interpret()
+        self.interpret(chromosome)
 
     # DATA OUTPUT
 
     def get_for_json(self):
+        ''' Returns Animal's ID and dict with information to export '''
         interpreted = {i: self.__getattribute__(i) for i in self.attributes}
         genome = self.genome
         data = {'parents': self.source, 'position': [self.x, self.y], 'gender': self.gender,
@@ -287,4 +309,5 @@ class Animal(Life):
         return self.id, data
 
     def get_data(self, attrib):
+        ''' Returns a dict with specified attributes of the Animal '''
         return {i: self.__getattribute__(i) for i in attrib}

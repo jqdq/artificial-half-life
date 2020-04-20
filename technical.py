@@ -8,12 +8,13 @@ from sys import exit
 with open('config.json', 'r') as target:
     config = load(target)
 
-
 def distance(a, b):
+    '''Come time ago this was harder'''
     return a-b
 
 
 def modify_string(val, pos, new_val):
+    '''Used to modify genome, basically `val[pos] = new_val` for strings'''
     new = ''
     for i in range(len(val)):
         if i == pos:
@@ -28,11 +29,12 @@ def modify4cam(value, camera, screen, x_or_y):
     return coord
 
 '''
-One Zero genes basic manipulation
+Genome manipulation
 '''
 
 
 def read_oz(val):
+    '''Sums all "1" in the string'''
     assert set(val).issubset({'0', '1'}), f'Niepoprawna notacja: {val}'
     g = 0
     for i in val:
@@ -42,6 +44,7 @@ def read_oz(val):
 
 
 def random_oz(dom=config['GENE_LEN']/2, length=config['GENE_LEN']):
+    ''' Generates a random string '''
     chance_threshold = dom/config['GENE_LEN']
     val = ''
     for _ in range(length):
@@ -80,16 +83,16 @@ class Section(set):
         return s
 
     def __init__(self, parent, parent_id, min_max_x, min_max_y, elements=[]):
-        """Tworzy sekcję (subklasę zbioru) pozwalając na ograniczenie przeszukiwania planszy.
+        """A subclass of Set used to improve performance of local searching.
 
         Arguments:
-            parent {list} -- mapa 
-            parent_id {[int, int]} -- położenie obiektu w parent
-            min_max_x {[int, int]} -- minimalne i maksymalne koordynaty x przypisania do sektora (przedział zamknięty obustronnie)
-            min_max_y {[int, int]} -- minimalne i maksymalne koordynaty y przypisania do sektora (przedział zamknięty obustronnie)
+            parent {list} -- List which will be later used as a map
+            parent_id {[int, int]} -- Coordinates of the object in parent
+            min_max_x {[int, int]} -- Min and max values of x coordinates of an object in this sector
+            min_max_y {[int, int]} -- Min and max values of y coordinates of an object in this sector
 
         Keyword Arguments:
-            elements {list} -- Lista obiektów istniejących na polu (default: {[]})
+            elements {list} -- List of elements in this field (default: {[]})
         """
         super().__init__(elements)
         assert len(parent_id) == 2, "Niepoprawne id"
@@ -107,25 +110,17 @@ class Section(set):
         return f"{self.x[0]}-{self.x[1]};{self.y[0]}-{self.y[1]}: {inside}"
 
     def add(self, obj):
-        """Dodaje obiekt do sekcji
-
-        Arguments:
-            obj {obiekt} -- obiekt do dodania
-
-        Raises:
-            Exception: Obiekt nie mieści się w min_max_x lub min_max_y sektora
-
-        Returns:
-            None
-        """
+        """Adds an object to the Section"""
 
         if not self.not_in_range(obj.x, obj.y):
             super().add(obj)
         else:
-            raise Exception("Obiekt poza zasięgiem sektora")
+            raise Exception("Object not in this sector's range")
 
     def next(self, *pos):
-        """Zwraca obiekt z określonej pozycji, lub określonego sąsiada, gdy pos=left/right/up/down"""
+        """Returns the object on the left/right/up/down (these can be simpy written and it will work
+        It also takes 2 ints as arguments which will be used as vectors.
+        """
         if isinstance(pos, str):
             pos = {'left': [-1, 0], 'right': [1, 0],
                    'up': [0, 1], 'down': [0, -1]}[pos]
@@ -137,8 +132,7 @@ class Section(set):
         return sec
 
     def not_in_range(self, x, y):
-        """Sprawdza, czy koordynaty x, y znajdują się w zasięgu sekcji. Jeśli nie zwraca wektor kierunku do poprawnego sektora
-        """
+        """Check if coordinates are in Section's range"""
         _info = [0, 0]
         if y > self.y[1]:
             _info[1] = 1
@@ -162,6 +156,7 @@ attr_dict = {"ID": 'id', "x coordinates": 'x', "y coordinates": 'y', "Gender": '
 
 
 def save_detail(fp, animal_list, turn):
+    '''Creates a detailed CSV with data of every animal'''
     try:
         if not path.exists(fp+'.csv'):
             with open(fp+'.csv', 'w', newline='\n') as csvfile:
@@ -178,6 +173,7 @@ def save_detail(fp, animal_list, turn):
 
 
 def save_summary(fp, animal_list, plant_list, turn):
+    '''Creates a shorter CSV with a summary of the simulation. Calculates longer.'''
     attributes = ['energy', 'speed', 'interest_threshold',
                   'interest_eating', 'breeding_threshold', 'mutation_res']
     try:
@@ -219,6 +215,7 @@ def save_summary(fp, animal_list, plant_list, turn):
 
 
 def save_json(fp, animal_list, turn):
+    '''Creates a JSON with even more detailed information about every animal (one JSON for one turn)'''
     data = dict()
     for i in animal_list:
         g = i.get_for_json()

@@ -1,7 +1,7 @@
 '''
 DISCLAIMER
 
-The script is meant do be use for data summary interpretation
+The script is meant do be use to create a simple visualization of CSV from summary mode
 
 '''
 import pandas as pd

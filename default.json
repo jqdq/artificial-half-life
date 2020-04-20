@@ -34,7 +34,7 @@
         "breeding_threshold": 5,
         "mutation_res": 4
     },
-    "EATING_LOG": 0,
+    "EATING_LOG": 1,
     "SIGHT": 10,
     "LOSE_PER_TURN": 0,
     "DEATH": true,
