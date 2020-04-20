@@ -1,4 +1,3 @@
-import logging
 import sys
 from math import sqrt
 from random import choice, random, randrange
@@ -8,7 +7,7 @@ import pygame as pg
 
 from config_GUI import configure
 from species import Animal, Life, Plant, config
-from technical import Section, distance, save_detail, save_json, save_summary, config
+from technical import Section, distance, save_detail, save_json, save_summary, config, modify4cam
 
 if __name__ == "__main__":
 
@@ -28,11 +27,15 @@ if __name__ == "__main__":
 
     if config['ENABLE_PG']:
         pg.init()
-        screen = pg.display.set_mode(size=(
-            2*Section.size*section_sqrt, 2*Section.size*section_sqrt), flags=0, depth=0, display=0)
+        screen = pg.display.set_mode(size=(800,800), flags=pg.RESIZABLE)
+        pg.display.set_caption("AL simulation")
         framerate = pg.time.Clock()
+        camera = {'x':100,'y':100,'scale':2}
+        FPS = 6
+        paused = False
     else:
         screen = None
+        camera = None
 
     search_sectors = Section.genmap(section_sqrt)
 
@@ -53,27 +56,63 @@ if __name__ == "__main__":
     animal_counter = len(animals)
 
     while True:
-        turn += 1
 
         ### PyGame stuff ###
         if config['ENABLE_PG']:
             for event in pg.event.get():
                 if event.type == pg.QUIT:
                     pg.quit()
-                    logging.shutdown()
                     sys.exit(0)
+                if event.type == pg.VIDEORESIZE:
+                    surface = pg.display.set_mode((event.w, event.h), pg.RESIZABLE)
+            
+            # User input handling
+            if pg.key.get_pressed()[pg.K_SPACE]: # Pausing
+                paused = not paused
+                pg.time.wait(250)
+            if pg.key.get_pressed()[pg.K_PAGEUP] or pg.key.get_pressed()[pg.K_EQUALS]:
+                if camera['scale']<5:
+                    camera['scale'] += 1
+            if pg.key.get_pressed()[pg.K_PAGEDOWN] or pg.key.get_pressed()[pg.K_MINUS]:
+                if camera['scale']>0:
+                    camera['scale'] -= 1
+            if pg.key.get_pressed()[pg.K_UP]:
+                camera['y'] -= 20
+            if pg.key.get_pressed()[pg.K_DOWN]:
+                camera['y'] += 20
+            if pg.key.get_pressed()[pg.K_LEFT]:
+                camera['x'] -= 20
+            if pg.key.get_pressed()[pg.K_RIGHT]:
+                camera['x'] += 20
+            
+            # Paused game handling
+            if paused: 
+                pg.display.flip()
+                framerate.tick(FPS)
+                continue
             screen.fill((0, 0, 0))
+
+        turn += 1
 
         ### Obsługa roślin ###
         for _ in range(config['REGEN_PER_TURN']):
             plants.append(Plant(plants, Section.size*section_sqrt,
                                 Section.size*section_sqrt, search_sectors))
 
+        # Plant drawing
         if config['ENABLE_PG']:
             for d in plants:
-                pg.draw.rect(screen, (0, 255, 0), (2*d.x, 2*d.y, 2, 2), 0)
+                pg.draw.rect(screen, (0, 255, 0), (modify4cam(d.x, camera, screen, 'x'), modify4cam(d.y, camera, screen, 'y'), 2**camera['scale'], 2**camera['scale']), 0)
 
         ### Obsługa gatunku wybranego ###
+        # Animal drawing
+        if config['ENABLE_PG']:
+            for d in animals:
+                if d.breeding_need <= config['START_BREEDING']+4:
+                    pg.draw.rect(screen, (0, 0, 255), (modify4cam(d.x, camera, screen, 'x'), modify4cam(d.y, camera, screen, 'y'), 2**camera['scale'], 2**camera['scale']), 0)
+                else:
+                    pg.draw.rect(screen, (255, 255, 255),
+                                 (modify4cam(d.x, camera, screen, 'x'), modify4cam(d.y, camera, screen, 'y'), 2**camera['scale'], 2**camera['scale']), 0)
 
         for d in animals[:]:
             target = d.search()
@@ -85,19 +124,13 @@ if __name__ == "__main__":
                 if isinstance(target, Animal) and d.breeding_need >= d.breeding_threshold and target.breeding_need >= target.breeding_threshold:
                     d.breed(target)
             else:
-                d.move(d.whereto(target, screen), Section.size*section_sqrt)
+                d.move(d.whereto(target, screen, camera), Section.size*section_sqrt)
             if d.energy <= 0 and config['DEATH']:
                 d.die()
             if random() < 0.1**(d.mutation_res/2.5):
                 d.mutate()
             d.breeding_need += 1
             d.energy -= config['LOSE_PER_TURN']
-            if config['ENABLE_PG']:
-                if d.breeding_need <= config['START_BREEDING']+4:
-                    pg.draw.rect(screen, (0, 0, 255), (2*d.x, 2*d.y, 2, 2), 0)
-                else:
-                    pg.draw.rect(screen, (255, 255, 255),
-                                 (2*d.x, 2*d.y, 2, 2), 0)
 
         ### Data extraction ###
 
@@ -113,16 +146,16 @@ if __name__ == "__main__":
         if len(animals) != animal_counter:
             if len(animals) == 0:
                 break
-            if config['ANIMAL_LIMIT'] and len(animals) >= config['ANIMAL_LIMIT']:
+            if config['ANIMAL_LIMIT']>0 and len(animals) >= config['ANIMAL_LIMIT']:
                 break
-            print('=====================', turn, '::', len(
-                animals), '=====================')
+            print('\n=====================', turn, '::', len(
+                animals), '=====================\n')
             animal_counter = len(animals)
-        if config['TURN_LIMIT'] and turn >= config['TURN_LIMIT']:
+        if config['TURN_LIMIT']>0 and turn >= config['TURN_LIMIT']:
             break
 
         if config['ENABLE_PG']:
             pg.display.flip()
-            framerate.tick(8)  # Ustawia szybkość w fps
+            framerate.tick(FPS)  # Ustawia szybkość w fps
 
     print('\n'*2, 'Simulation ended', '\a\a\a', '\n'*2)

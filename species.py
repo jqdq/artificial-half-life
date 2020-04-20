@@ -1,14 +1,14 @@
-import logging
 from math import log, sqrt
 from random import choice, random, randrange
 import json
 
 import pygame.draw
 
-from technical import Section, distance, modify_string, random_oz, read_oz
+from technical import Section, distance, modify_string, random_oz, read_oz, modify4cam
 
-with open('default.json', 'r') as target:
+with open('config.json', 'r') as target:
     config = json.load(target)
+
 
 class Life(object):
 
@@ -94,7 +94,7 @@ class Animal(Life):
         self.interpret()
 
     def __str__(self):
-        return f'Animal [{self.id} | {self.x}, {self.y}] speed={self.speed} energy={self.energy}'
+        return f'[{self.id} | {self.x}, {self.y}]'
 
     def __repr__(self):
         return str(self)
@@ -103,7 +103,7 @@ class Animal(Life):
 
     # Moving
 
-    def whereto(self, obj, screen=None):
+    def whereto(self, obj, screen=None, camera=None):
         """Określa koordynaty do poruszania się w kierunku obiektu
         Also maluje na ekranie czerwoną kropkę na celu
 
@@ -114,8 +114,9 @@ class Animal(Life):
         Returns:
             [int, int] -- wektor poruszania się
         """
-        if screen:
-            pygame.draw.rect(screen, (255, 0, 0), (2*obj.x, 2*obj.y, 2, 2), 0)
+        if screen and camera:
+            pygame.draw.rect(screen, (255, 0, 0), (modify4cam(obj.x, camera, screen, 'x'), modify4cam(
+                obj.y, camera, screen, 'y'), 2**camera['scale'], 2**camera['scale']), 0)
         a = distance(obj.x, self.x)
         b = distance(obj.y, self.y)
         if abs(a) > self.speed:
@@ -196,7 +197,6 @@ class Animal(Life):
                 shift = self.section.not_in_range(*i)
                 if shift:
                     new = self.section.next(*shift)
-                    logging.debug("Szukanie: "+str(new))
                     area.update(new)
         possible = dict()
         for i in area:
@@ -215,9 +215,8 @@ class Animal(Life):
                 if val > 0.1**self.interest_threshold-config['GENE_LEN']/2:
                     possible[i] = val
         if len(possible) > 0:
-            d = sorted(possible.items(), key=lambda t: t[1])
             chosen = choice(sorted(possible.items(), key=lambda t: t[1])[
-                            (len(possible)//4)*3:])[0]
+                            (len(possible)//8)*7:])[0]
             return chosen
         else:
             return None
@@ -227,7 +226,6 @@ class Animal(Life):
     def eat(self, obj):
         """ metoda do jedzenia obj """
         self.energy += obj.nutrition
-        logging.debug(f'Eating at [{obj.x}, {obj.y}]')
         obj.die()
 
     def breed(self, partner):
@@ -246,7 +244,7 @@ class Animal(Life):
         child = Animal(self.parent, self.x, self.y, self.section,
                        int(start_en), [self.id, partner.id], genome)
         self.parent.append(child)
-        print(f"{child} narodzony z {partner} oraz {self}")
+        print(f"Breeding: {self} and {partner} -> {child}")
         # Obniżanie libido i energi
         self.energy = int(self.energy*2/3)
         partner.energy = int(partner.energy*2/3)
@@ -255,7 +253,7 @@ class Animal(Life):
 
     def die(self):
         super().die()
-        print(self, "died")
+        print("Death:", self)
 
     ### GENETICS ###
 
@@ -268,14 +266,14 @@ class Animal(Life):
 
     def mutate(self):
         chromosome = choice(self.attributes)
+        old = self.genome[chromosome]
         if random() < 0.5:
             place = randrange(len(self.genome[chromosome]))
             self.genome[chromosome] = modify_string(self.genome[chromosome], place, {
                                                     '0': '1', '1': '0'}[self.genome[chromosome][place]])
         else:
             self.genome[chromosome] = self.genome[chromosome][::-1]
-        print(
-            f'Mutacja u {self}. Chromosom {chromosome}: {self.genome[chromosome]}')
+        print(f'Mutation: {self}; {chromosome}: {old} -> {self.genome[chromosome]}')
         self.interpret()
 
     # DATA OUTPUT
@@ -284,7 +282,7 @@ class Animal(Life):
         interpreted = {i: self.__getattribute__(i) for i in self.attributes}
         genome = self.genome
         data = {'parents': self.source, 'position': [self.x, self.y], 'gender': self.gender,
-                'breeding_need': self.breeding_need, 'energy': self.energy, 
+                'breeding_need': self.breeding_need, 'energy': self.energy,
                 'interpreted': interpreted, 'genome': genome}
         return self.id, data
 

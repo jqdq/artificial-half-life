@@ -45,7 +45,7 @@ class MyFrame(wx.Frame):
         self.NutrValIn = wx.SpinCtrl(self, wx.ID_ANY, str(
             self.config['PLANT_NUTRITION']), min=0, max=2147483647)
         self.PlantSpIn = wx.SpinCtrl(self, wx.ID_ANY, str(
-            self.config['PLANT_AMOUNT']), min=0, max=2147483647)
+            self.config['REGEN_PER_TURN']), min=0, max=2147483647)
         self.DeathCheck = wx.CheckBox(self, wx.ID_ANY, "Death from hunger")
         self.DeathCheck.SetValue(self.config['DEATH'])
         self.GeneLenIn = wx.SpinCtrl(
@@ -100,7 +100,6 @@ class MyFrame(wx.Frame):
         self.MaxAnimIn.SetToolTip("0 disables the condition")
         self.MoveModIn.SetToolTip(
             "Isn't used when 0; if higher consumed energy is multiplied by its logarithm of this value")
-        self.csv_radio.SetSelection(0)
         self.revert_button.SetMinSize((108, 26))
         self.save_button.SetMinSize((88, 26))
         self.start_button.SetMinSize((88, 26))
@@ -207,7 +206,7 @@ class MyFrame(wx.Frame):
         wiersz_2.Add(SimSet, 1, wx.ALL | wx.EXPAND, 2)
         GeneLenT = wx.StaticText(self, wx.ID_ANY, "Gene length")
         GeneLenC.Add(GeneLenT, 1, wx.ALIGN_CENTER_VERTICAL, 0)
-        GeneLenC.Add(self.GeneLenIn, 1, wx.ALIGN_CENTER_VERTICAL |
+        GeneLenC.Add(self.GeneLenIn, 0, wx.ALIGN_CENTER_VERTICAL |
                      wx.ALIGN_RIGHT | wx.ALL, 0)
         GeneSet.Add(GeneLenC, 0, wx.EXPAND, 0)
         SpeedT = wx.StaticText(self, wx.ID_ANY, "Speed")
@@ -307,7 +306,7 @@ class MyFrame(wx.Frame):
         self.SightIn.SetValue(self.config['SIGHT'])
         self.EnergyPerIn.SetValue(self.config['LOSE_PER_TURN'])
         self.NutrValIn.SetValue(self.config['PLANT_NUTRITION'])
-        self.PlantSpIn.SetValue(self.config['PLANT_AMOUNT'])
+        self.PlantSpIn.SetValue(self.config['REGEN_PER_TURN'])
         self.GeneLenIn.SetValue(self.config['GENE_LEN'])
         self.TurnsBetweenIn.SetValue(self.config['SAVE_INTERVAL'])
         self.CSVfpIn.SetValue(self.config['CSV_FP'])
@@ -331,7 +330,7 @@ class MyFrame(wx.Frame):
         self.config['SIGHT'] = self.SightIn.GetValue()
         self.config['LOSE_PER_TURN'] = self.EnergyPerIn.GetValue()
         self.config['PLANT_NUTRITION'] = self.NutrValIn.GetValue()
-        self.config['PLANT_AMOUNT'] = self.PlantSpIn.GetValue()
+        self.config['REGEN_PER_TURN'] = self.PlantSpIn.GetValue()
         self.config['GENE_LEN'] = self.GeneLenIn.GetValue()
         self.config['ANIMAL_ATTRIBS'] = {'speed': self.SpeedIn.GetValue(),
                                          'interest_threshold': self.AttThreIn.GetValue(),

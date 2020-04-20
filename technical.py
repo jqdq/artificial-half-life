@@ -4,9 +4,8 @@ import pandas as pd
 from json import dump, load
 from os import path
 from sys import exit
-import logging
 
-with open('default.json', 'r') as target:
+with open('config.json', 'r') as target:
     config = load(target)
 
 
@@ -23,6 +22,10 @@ def modify_string(val, pos, new_val):
             new += val[i]
     return new
 
+def modify4cam(value, camera, screen, x_or_y):
+    """Calculates values for drawing on screen"""
+    coord = ((value-camera[x_or_y])*2**camera['scale']+(screen.get_size()[{'x':0,'y':1}[x_or_y]]/2))
+    return coord
 
 '''
 One Zero genes basic manipulation
@@ -170,7 +173,7 @@ def save_detail(fp, animal_list, turn):
                     attr_dict[config['ATTRIBUTES_TO_SAVE']]).values()]
                 csvfile.write(str(turn)+";"+";".join(data)+"\n")
     except FileNotFoundError:
-        logging.critical("SAVE LOCATION NOT FOUND")
+        print("SAVE LOCATION NOT FOUND")
         exit(1)
 
 
@@ -186,7 +189,7 @@ def save_summary(fp, animal_list, plant_list, turn):
             with open(fp+'.csv', 'w', newline='\n') as csvfile:
                 csvfile.write(";".join(attr_names)+"\n")
     except FileNotFoundError:
-        logging.critical("SAVE LOCATION NOT FOUND")
+        print("SAVE LOCATION NOT FOUND")
         exit(1)
 
     # Calculating statistics
@@ -211,7 +214,7 @@ def save_summary(fp, animal_list, plant_list, turn):
             text = str(turn)+";"+";".join(stats)+"\n"
             csvfile.write(text)
     except FileNotFoundError:
-        logging.critical("SAVE LOCATION NOT FOUND")
+        print("SAVE LOCATION NOT FOUND")
         exit(1)
 
 
@@ -224,5 +227,5 @@ def save_json(fp, animal_list, turn):
         with open(f"{fp}_{turn}.json", 'w') as file:
             dump(data, file)
     except FileNotFoundError:
-        logging.critical("SAVE LOCATION NOT FOUND")
+        print("SAVE LOCATION NOT FOUND")
         exit(1)
