@@ -1,5 +1,4 @@
-# projekt-si
-
+# Artificial (Half) Life
 Just an Artificial Life app with visualization and GUI. You can output data in CSV and JSON formats.
 
 ## PyGame preview
