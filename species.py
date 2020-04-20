@@ -273,7 +273,7 @@ class Animal(Life):
     def interpret(self, chromosome=None):
         '''Interprets the raw genome'''
         if chromosome:
-            val = read_oz(chromosome)
+            val = read_oz(self.genome[chromosome])
             if chromosome == 'speed':
                 val += 1
             self.__setattr__(chromosome, val)
