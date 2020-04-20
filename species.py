@@ -49,8 +49,8 @@ class Plant(Life):
             region {[[Section, ...], ...]} -- List of all Section objects
         """        
         while True:
-            x = randrange(0, max_x+1)
-            y = randrange(0, max_y+1)
+            x = randrange(0, max_x)
+            y = randrange(0, max_y)
             section = region[x//Section.size][y//Section.size]
             end_test = True
             for i in section:
