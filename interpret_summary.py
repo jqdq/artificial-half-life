@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 
 FP = 'data/data1.csv'
 ATTRIB = ['speed', 'interest_threshold',
-          'interest_eating', 'breeding_threshold', 'mutation_chance']
+          'interest_eating', 'breeding_threshold', 'mutation_res']
 
 df = pd.read_csv(FP, delimiter=';', index_col='turn')
 
@@ -18,7 +18,7 @@ plt.subplot(2, 1, 1)
 plt.title("Populacja", fontsize=11)
 plt.plot(df['animal_amount'], label="Liczba zwierząt")
 plt.plot(df['plant_amount'], label='Liczba roślin')
-plt.ylim(0, 1000)
+#plt.ylim(0, 1000)
 plt.xticks(df.index[::20], rotation=70, fontsize=7.5,
            ha='right', rotation_mode="anchor")
 plt.xlabel('Tura', fontsize=9)
