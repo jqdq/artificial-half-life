@@ -45,7 +45,7 @@ def read_oz(val):
 
 def random_oz(dom=config['GENE_LEN']/2, length=config['GENE_LEN']):
     ''' Generates a random string '''
-    chance_threshold = dom/config['GENE_LEN']
+    chance_threshold = dom/length
     val = ''
     for _ in range(length):
         if random() < chance_threshold:
