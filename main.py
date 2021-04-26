@@ -17,7 +17,7 @@ if __name__ == "__main__":
     # pełzających po ziemi. I widział Bóg, że były dobre.
 
     config = configure()
-    if config==None:
+    if config is None:
         sys.exit(0)
 
     ''' SETUP '''
@@ -41,15 +41,28 @@ if __name__ == "__main__":
 
     ### Produkcja startowej biosfery ###
 
-    animals = []
-    for i in range(config['ANIMAL_AMOUNT']):
-        animals.append(Animal(animals, randrange(0, Section.size*section_sqrt),
-                              randrange(0, Section.size*section_sqrt), search_sectors, config['START_FOOD'], None, None))
+    animals = [
+        Animal(
+            animals,
+            randrange(0, Section.size * section_sqrt),
+            randrange(0, Section.size * section_sqrt),
+            search_sectors,
+            config['START_FOOD'],
+            None,
+            None,
+        )
+        for _ in range(config['ANIMAL_AMOUNT'])
+    ]
 
-    plants = []
-    for i in range(config['PLANT_AMOUNT']):
-        plants.append(Plant(plants, Section.size*section_sqrt,
-                            Section.size*section_sqrt, search_sectors))
+    plants = [
+        Plant(
+            plants,
+            Section.size * section_sqrt,
+            Section.size * section_sqrt,
+            search_sectors,
+        )
+        for _ in range(config['PLANT_AMOUNT'])
+    ]
 
     ''' PRZEBIEG TURY '''
     turn = 0
@@ -65,17 +78,21 @@ if __name__ == "__main__":
                     sys.exit(0)
                 if event.type == pg.VIDEORESIZE:
                     surface = pg.display.set_mode((event.w, event.h), pg.RESIZABLE)
-            
+
             # User input handling
             if pg.key.get_pressed()[pg.K_SPACE]: # Pausing
                 paused = not paused
                 pg.time.wait(250)
-            if pg.key.get_pressed()[pg.K_PAGEUP] or pg.key.get_pressed()[pg.K_EQUALS]:
-                if camera['scale']<5:
-                    camera['scale'] += 1
-            if pg.key.get_pressed()[pg.K_PAGEDOWN] or pg.key.get_pressed()[pg.K_MINUS]:
-                if camera['scale']>0:
-                    camera['scale'] -= 1
+            if (
+                pg.key.get_pressed()[pg.K_PAGEUP]
+                or pg.key.get_pressed()[pg.K_EQUALS]
+            ) and camera['scale'] < 5:
+                camera['scale'] += 1
+            if (
+                pg.key.get_pressed()[pg.K_PAGEDOWN]
+                or pg.key.get_pressed()[pg.K_MINUS]
+            ) and camera['scale'] > 0:
+                camera['scale'] -= 1
             if pg.key.get_pressed()[pg.K_UP]:
                 camera['y'] -= 20
             if pg.key.get_pressed()[pg.K_DOWN]:
@@ -84,7 +101,7 @@ if __name__ == "__main__":
                 camera['x'] -= 20
             if pg.key.get_pressed()[pg.K_RIGHT]:
                 camera['x'] += 20
-            
+
             # Paused game handling
             if paused: 
                 pg.display.flip()
@@ -116,7 +133,7 @@ if __name__ == "__main__":
 
         for d in animals[:]:
             target = d.search()
-            if target == None:
+            if target is None:
                 d.move(d.random_walk(), Section.size*section_sqrt)
             elif target.x == d.x and target.y == d.y:
                 if isinstance(target, Plant):
@@ -144,7 +161,7 @@ if __name__ == "__main__":
 
         # Sprawdzanie i zapis ilości zwierząt
         if len(animals) != animal_counter:
-            if len(animals) == 0:
+            if not animals:
                 break
             if config['ANIMAL_LIMIT']>0 and len(animals) >= config['ANIMAL_LIMIT']:
                 break
