@@ -9,7 +9,7 @@ matplotlib==3.2.1
 mccabe==0.6.1
 numpy==1.18.2
 pandas==1.0.3
-Pillow==8.1.1
+Pillow==9.0.0
 pycodestyle==2.5.0
 pygame==1.9.6
 pylint==2.4.4
