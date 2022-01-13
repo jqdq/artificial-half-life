@@ -52,11 +52,7 @@ class Plant(Life):
             x = randrange(0, max_x)
             y = randrange(0, max_y)
             section = region[x//Section.size][y//Section.size]
-            end_test = True
-            for i in section:
-                if i.x == x and i.y == y:
-                    end_test = False
-                    break
+            end_test = not any(i.x == x and i.y == y for i in section)
             if end_test:
                 break
         super().__init__(parent, x, y, section)
@@ -71,10 +67,7 @@ class Animal(Life):
 
     @classmethod
     def gencode(cls):
-        genes = dict()
-        for i in cls.attributes:
-            genes[i] = random_oz(dom=config['ANIMAL_ATTRIBS'][i])
-        return genes
+        return {i: random_oz(dom=config['ANIMAL_ATTRIBS'][i]) for i in cls.attributes}
 
     ### BUILT-IN ###
 
@@ -96,10 +89,7 @@ class Animal(Life):
         self.energy = energy
         self.breeding_need = config['START_BREEDING']
         self.id = hash(self)
-        if not genome:
-            self.genome = self.gencode()
-        else:
-            self.genome = genome
+        self.genome = self.gencode() if not genome else genome
         self.interpret()
 
     def __str__(self):
@@ -172,11 +162,9 @@ class Animal(Life):
             self.section.add(self)
         # Konsumpcja
         eaten = abs(direction[0])+abs(direction[1])
-        if not config['EATING_LOG'] in [0,1]:
+        if config['EATING_LOG'] not in [0, 1]:
             self.energy -= round(eaten * log(eaten, config['EATING_LOG']))
-        elif config['EATING_LOG']==0:
-            pass
-        else:
+        elif config['EATING_LOG'] != 0:
             self.energy -= eaten
 
     # Object detection
@@ -196,7 +184,7 @@ class Animal(Life):
     def search(self):
         '''Handles target search, returns the best target or None'''
         area = self.section.copy()
-        if self.sight_radius == None or self.sight_radius > Section.size:
+        if self.sight_radius is None or self.sight_radius > Section.size:
             for i in self.section.parent:
                 for j in i:
                     area.update(j)
@@ -210,7 +198,7 @@ class Animal(Life):
                 if shift:
                     new = self.section.next(*shift)
                     area.update(new)
-        possible = dict()
+        possible = {}
         for i in area:
             if i == self:
                 continue
@@ -226,9 +214,8 @@ class Animal(Life):
                             self.energy/(1+self.speed)
                 if val > 0.1**self.interest_threshold-config['GENE_LEN']/2:
                     possible[i] = val
-        if len(possible) > 0:
-            chosen = sorted(possible.items(), key=lambda t: t[1])[-1][0]
-            return chosen
+        if possible:
+            return sorted(possible.items(), key=lambda t: t[1])[-1][0]
         else:
             return None
 
@@ -245,7 +232,7 @@ class Animal(Life):
         assert self.x == partner.x and self.y == partner.y, "Wrong position"
         assert self.gender != partner.gender, "Same gender"
         # Genome and starting energy calculation
-        genome = dict()
+        genome = {}
         for i in self.attributes:
             cut = randrange(config['GENE_LEN'])
             left = self.genome[i][:cut]

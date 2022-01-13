@@ -15,18 +15,13 @@ def distance(a, b):
 
 def modify_string(val, pos, new_val):
     '''Used to modify genome, basically `val[pos] = new_val` for strings'''
-    new = ''
-    for i in range(len(val)):
-        if i == pos:
-            new += new_val
-        else:
-            new += val[i]
-    return new
+    return ''.join(new_val if i == pos else val[i] for i in range(len(val)))
 
 def modify4cam(value, camera, screen, x_or_y):
     """Calculates values for drawing on screen"""
-    coord = ((value-camera[x_or_y])*2**camera['scale']+(screen.get_size()[{'x':0,'y':1}[x_or_y]]/2))
-    return coord
+    return (value - camera[x_or_y]) * 2 ** camera['scale'] + (
+        screen.get_size()[{'x': 0, 'y': 1}[x_or_y]] / 2
+    )
 
 '''
 Genome manipulation
@@ -36,23 +31,15 @@ Genome manipulation
 def read_oz(val):
     '''Sums all "1" in the string'''
     assert set(val).issubset({'0', '1'}), f'Niepoprawna notacja: {val}'
-    g = 0
-    for i in val:
-        if i == '1':
-            g += 1
-    return g
+    return val.count('1')
 
 
 def random_oz(dom=config['GENE_LEN']/2, length=config['GENE_LEN']):
     ''' Generates a random string '''
     chance_threshold = dom/length
-    val = ''
-    for _ in range(length):
-        if random() < chance_threshold:
-            val += '1'
-        else:
-            val += '0'
-    return val
+    return ''.join(
+        '1' if random() < chance_threshold else '0' for _ in range(length)
+    )
 
 
 '''
@@ -75,10 +62,16 @@ class Section(set):
         """
         s = []
         for i in range(size):
-            g = []
-            for j in range(size):
-                g.append(cls(s, (i, j), [
-                         i*cls.size, (i*cls.size)+cls.size-1], [j*cls.size, (j*cls.size)+cls.size-1]))
+            g = [
+                cls(
+                    s,
+                    (i, j),
+                    [i * cls.size, (i * cls.size) + cls.size - 1],
+                    [j * cls.size, (j * cls.size) + cls.size - 1],
+                )
+                for j in range(size)
+            ]
+
             s.append(g)
         return s
 
@@ -104,9 +97,7 @@ class Section(set):
         self.parent_id = parent_id
 
     def __str__(self):
-        inside = ''
-        for i in self:
-            inside += str(i)+';'
+        inside = ''.join(str(i)+';' for i in self)
         return f"{self.x[0]}-{self.x[1]};{self.y[0]}-{self.y[1]}: {inside}"
 
     def add(self, obj):
@@ -216,7 +207,7 @@ def save_summary(fp, animal_list, plant_list, turn):
 
 def save_json(fp, animal_list, turn):
     '''Creates a JSON with even more detailed information about every animal (one JSON for one turn)'''
-    data = dict()
+    data = {}
     for i in animal_list:
         g = i.get_for_json()
         data[g[0]] = g[1]
